@@ -657,10 +657,16 @@ law resp_reply_maps:
   {Rs.reply_of(200, "{\"id\":\"resp_1\",\"status\":\"completed\",\"error\":null,\"output\":[{\"type\":\"reasoning\",\"id\":\"rs_1\",\"encrypted_content\":\"ENC2\",\"summary\":[{\"type\":\"summary_text\",\"text\":\"think\"}]},{\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"hello\"}]},{\"type\":\"function_call\",\"call_id\":\"call_x\",\"name\":\"bash\",\"arguments\":\"{\\\"arg\\\":\\\"pwd\\\"}\"}]}")
     == "OK <think>think\\nBENDSIG::oair:ENC2</think>\\nhello\nCALL 1 bash : pwd\nEND\n" : String}
 
-# LAW: a stream is read from its terminal event (the whole response
-# rides in response.completed); the deltas before it are not needed.
+# LAW: a normal stream is read from its terminal event (the whole response
+# rides in response.completed).
 law resp_stream_reads_completed:
   {Rs.reply_any("event: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"delta\":\"hel\"}\n\nevent: response.completed\ndata: {\"type\":\"response.completed\",\"sequence_number\":9,\"response\":{\"error\":null,\"output\":[{\"type\":\"message\",\"content\":[{\"type\":\"output_text\",\"text\":\"hello\"}]}],\"usage\":{\"input_tokens\":12,\"input_tokens_details\":{\"cached_tokens\":8},\"output_tokens\":3}}}\n\n")
+    == "OK hello\nEND\n" : String}
+
+# LAW: ChatGPT's direct route may leave output empty in the completed event
+# while still streaming the answer text; the streamed deltas are the fallback.
+law resp_stream_text_fallback:
+  {Rs.reply_any("event: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"delta\":\"hel\"}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"delta\":\"lo\"}\n\nevent: response.completed\ndata: {\"type\":\"response.completed\",\"response\":{\"status\":\"completed\",\"output\":[]}}\n\n")
     == "OK hello\nEND\n" : String}
 
 # LAW: an error event, or a stream cut before its end, is an error

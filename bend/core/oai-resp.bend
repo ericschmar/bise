@@ -489,15 +489,58 @@ def fin(lines: List<&2, String>, +prev: Maybe<&2, J.Json>)
 def final_of(+sse: String) -> Maybe<&2, J.Json>:
   fin(String.split(sse, Tx.newline()), None{})
 
-def reply.of(m: Maybe<&2, J.Json>) -> String:
+# Some direct ChatGPT-plan responses stream their text deltas but complete
+# with response.output = [] (the text is still present in the stream). Keep
+# those deltas as a fallback; a normal completed response remains authoritative.
+def delta_data.hit(hit: Bool, +e: J.Json, +acc: List<&2, String>)
+    -> List<&2, String>:
+  match hit:
+    case True{}:
+      Con{J.get_str_or(e, "delta", ""), acc}
+    case False{}:
+      acc
+
+def delta_data(+data: String, +acc: List<&2, String>) -> List<&2, String>:
+  +e = J.parse(data)
+  delta_data.hit(String.eq(J.get_str_or(e, "type", ""),
+      "response.output_text.delta"), e, acc)
+
+def deltas.line(is_data: Bool, +l: String, +acc: List<&2, String>)
+    -> List<&2, String>:
+  match is_data:
+    case True{}:
+      delta_data(String.trim(String.drop(l, 5n)), acc)
+    case False{}:
+      acc
+
+def deltas(+lines: List<&2, String>, +acc: List<&2, String>) -> List<&2, String>:
+  match lines:
+    case Nil{}:
+      List.reverse(&2, String, acc)
+    case Con{+l, rest}:
+      deltas(rest, deltas.line(String.starts_with(l, "data:"), l, acc))
+
+def delta_text(+sse: String) -> String:
+  String.join(deltas(String.split(sse, Tx.newline()), Nil{}), "")
+
+def reply.of.fallback(empty: Bool, +text: String) -> String:
+  match empty:
+    case True{}:
+      ""
+    case False{}:
+      String.append("OK ", String.append(W.escape_nl(text), "\nEND\n"))
+
+def reply.of(m: Maybe<&2, J.Json>, +text: String) -> String:
   match m:
     case Some{+r}:
-      reply_resp(r)
+      +output = W.arr_field_or(r, "output")
+      Bool.pick(String, List.is_empty(&2, J.Json, output),
+        reply.of.fallback(String.is_empty(text), text), reply_resp(r))
     case None{}:
       "ERROR provider 200: the stream ended before the response was complete\nEND\n"
 
 def reply(+sse: String) -> String:
-  reply.of(final_of(sse))
+  reply.of(final_of(sse), delta_text(sse))
 
 # a 200 is a stream, or a whole JSON (a server that ignored "stream")
 def reply_any.pick(is_json: Bool, +body: String) -> String:
