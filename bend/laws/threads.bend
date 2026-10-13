@@ -9,9 +9,11 @@ import ../runtime/provider-pure.bend as Pv
 import ../runtime/mcp-pure.bend as Mc
 import ../runtime/live-pure.bend as Lp
 import ../vendor/http/encoding/utf8.bend as U8
+import ../vendor/json.bend as J
 import ../hub/model.bend as HM
 import ../hub/cx.bend as HX
 import ../hub/core.bend as HC
+import ../hub/picks.bend as HPK
 import ../hub/keyed.bend as HKL
 import ../hub/gen/feed.bend as HFD
 import ../hub/said.bend as HSD
@@ -118,7 +120,8 @@ law unknown_agent_is_no_task:
 # each and in this order: main's note (it still wakes main; its fixed head
 # is what the clients match to drop it), the same route line an agent's
 # card writes ('you → @main (answer to card #N) : <his answer, whole>',
-# the "you answered" row), and the card closed as answered.
+# the "you answered" row, with his pick, no message: none was sent), and
+# the card closed as answered.
 law main_card_answer_routes_once:
   for -o: HM.St
   for +cx: HX.Cx<o>
@@ -127,9 +130,9 @@ law main_card_answer_routes_once:
   for +parts: String
   {HC.answer.q.main(o, cx, c, text, parts)
     == HC.close_card(o,
-      HC.route_line(o,
+      HC.answer_line(o,
         HC.notify_main(o, cx, HC.cat([HC.MAIN_ANSWER_HEAD(), HC.ns(HM.Card.id(c)), " (\"", HM.one_line(HM.Card.text(c)), "\"): \"", HM.one_line(text), "\""])),
-        HM.MAIN(), Some{HM.Card.id(c)}, text, parts),
+        HM.MAIN(), HM.MAIN(), c, text, parts, None{}),
       HM.Card.id(c), "answered") : HX.Cx<o>}
 
 # LAW: his message's feed line is followed, in the same step, by its id
@@ -184,7 +187,7 @@ law no_parts_no_line:
   for +who: String
   for +card: Maybe<&2, Nat>
   for +said: String
-  {HC.route_line(o, cx, who, card, said, "") == HC.feed(o, cx, HM.MAIN(), HFD.route(who, card, said)) : HX.Cx<o>}
+  {HC.route_line(o, cx, who, card, said, "") == HC.feed(o, cx, HM.MAIN(), HFD.route(who, card, said, None{}, None{}, None{})) : HX.Cx<o>}
 
 # LAW: a route line with parts is followed by one 'route-parts' line.
 law route_parts_follow_the_route:
@@ -195,7 +198,93 @@ law route_parts_follow_the_route:
   for +said: String
   for +parts: String
   for e: {String.is_empty(parts) == False{} : Bool}
-  {HC.route_line(o, cx, who, card, said, parts) == HC.feed(o, HC.feed(o, cx, HM.MAIN(), HFD.route(who, card, said)), HM.MAIN(), HFD.route_parts(HC.parts_json(parts))) : HX.Cx<o>}
+  {HC.route_line(o, cx, who, card, said, parts) == HC.feed(o, HC.feed(o, cx, HM.MAIN(), HFD.route(who, card, said, None{}, None{}, None{})), HM.MAIN(), HFD.route_parts(HC.parts_json(parts))) : HX.Cx<o>}
+
+# ---- inbox picks (architect m_22243): his answer's route line ----
+
+# LAW: an option picked by its number gets that option's words, the
+# number with them.
+law an_option_number_gets_its_words:
+  {HPK.option_pick("which one?\n1. at every step\n2. only at checkout", " 2 ") == Some{HPK.Pick{2n, "only at checkout"}} : Maybe<&2, HPK.Pick>}
+
+# LAW: words get no pick (his words are the row's words).
+law words_get_no_pick:
+  {HPK.option_pick("which one?\n1. at every step\n2. only at checkout", "only at checkout") == None{} : Maybe<&2, HPK.Pick>}
+
+# LAW: a number that isn't one of the card's options gets no pick.
+law a_number_off_the_list_gets_no_pick:
+  {HPK.option_pick("which one?\n1. at every step\n2. only at checkout", "3") == None{} : Maybe<&2, HPK.Pick>}
+
+# LAW: a pick's number and its words are both on the line or both absent.
+law pick_both_or_neither:
+  for p: Maybe<&2, HPK.Pick>
+  {Maybe.is_some(&2, Nat, HPK.pick_n(p)) == Maybe.is_some(&2, String, HPK.pick_words(p)) : Bool}
+
+# LAW: his answer's route line says what he said, unchanged (the pick
+# rides beside it; said == render(parts) still holds).
+law the_answer_line_keeps_said:
+  for +who: String
+  for +c: HM.Card
+  for +said: String
+  for +msg: Maybe<&2, Nat>
+  {HC.answer_rec(HPK.ans(HM.Card.id(c), HM.Card.text(c), who, said), msg) == HFD.route(who, Some{HM.Card.id(c)}, said, msg, HPK.pick_n(HPK.option_pick(HM.Card.text(c), said)), HPK.pick_words(HPK.option_pick(HM.Card.text(c), said))) : J.Json}
+
+# LAW: the step's answer (inbox picks (3), link.rs AStep ans_*): the card,
+# who asked, what he said and the question are all there or all absent...
+law answer_who_with_its_card:
+  for m: Maybe<&2, HPK.Ans>
+  {Maybe.is_some(&2, Nat, HPK.card_of(m)) == Maybe.is_some(&2, String, HPK.who_of(m)) : Bool}
+
+law answer_said_with_its_card:
+  for m: Maybe<&2, HPK.Ans>
+  {Maybe.is_some(&2, Nat, HPK.card_of(m)) == Maybe.is_some(&2, String, HPK.said_of(m)) : Bool}
+
+law answer_ask_with_its_card:
+  for m: Maybe<&2, HPK.Ans>
+  {Maybe.is_some(&2, Nat, HPK.card_of(m)) == Maybe.is_some(&2, String, HPK.ask_of(m)) : Bool}
+
+# LAW: ...a pick only when they are there...
+law answer_pick_needs_the_card:
+  for m: Maybe<&2, HPK.Ans>
+  {Bool.and(Maybe.is_some(&2, String, HPK.pick_of_ans(m)), Bool.not(Maybe.is_some(&2, Nat, HPK.card_of(m)))) == False{} : Bool}
+
+# LAW: ...and the step's pick is the route line's pick: both come from the
+# one answer that answer_line notes (X.answered) and writes (answer_rec)
+law the_steps_pick_is_the_route_lines:
+  for +c: HM.Card
+  for +who: String
+  for +said: String
+  {HPK.pick_of_ans(Some{HPK.ans(HM.Card.id(c), HM.Card.text(c), who, said)}) == HPK.pick_words(HPK.option_pick(HM.Card.text(c), said)) : Maybe<&2, String>}
+
+# LAW: the answer noted in a step is the one the step's answer reads
+law the_noted_answer_is_read_back:
+  for -o: HM.St
+  for cx: HX.Cx<o>
+  for +a: HPK.Ans
+  {HX.R.answered(HX.Cx.r(o, HX.answered(o, cx, a))) == Some{a} : Maybe<&2, HPK.Ans>}
+
+# LAW: an agent's card: his answer's route line goes in the asker's feed
+# too (inbox picks (2); its fold makes the asker's msg-in that row).
+law an_agents_answer_is_in_the_askers_feed:
+  for -o: HM.St
+  for +cx: HX.Cx<o>
+  for +asker: String
+  for +c: HM.Card
+  for +said: String
+  for +parts: String
+  for +msg: Maybe<&2, Nat>
+  for e: {String.eq(asker, HM.MAIN()) == False{} : Bool}
+  {HC.asker_line(o, cx, asker, c, said, parts, msg) == HC.answer_line(o, cx, asker, asker, c, said, parts, msg) : HX.Cx<o>}
+
+# LAW: main's own card: the one line in main's feed, no second.
+law mains_own_answer_is_one_line:
+  for -o: HM.St
+  for +cx: HX.Cx<o>
+  for +c: HM.Card
+  for +said: String
+  for +parts: String
+  for +msg: Maybe<&2, Nat>
+  {HC.asker_line(o, cx, HM.MAIN(), c, said, parts, msg) == cx : HX.Cx<o>}
 
 # LAW: his answer to a question card reaches the asker with his parts on
 # the message (the asker's thread draws it like any message of his).

@@ -141,6 +141,21 @@ libgate() {
   fi
   echo "library $1" > $O/BREACH; breach
 }
+# the candidate's own preferences domain, at the end of every mode (the quick one too: cand-e91f98d7
+# run): through cfprefsd first (it caches and writes back); an emptied domain can leave its file as
+# '{}' (run 40fc444d): only then rm it, and check after ~5 s that cfprefsd didn't write it back.
+# cfprefsd itself is never touched (ambient-lead m_20883)
+candprefs() {
+  defaults delete "$CAND_ID" > $O/cand-prefs-delete.txt 2>&1; echo "rc=$?" >> $O/cand-prefs-delete.txt
+  if [ -e "$CANDPREF" ]; then say "cand prefs: 'defaults delete $CAND_ID' done, the file is still there ($(stat -f %z "$CANDPREF") bytes, $(plutil -p "$CANDPREF" 2>/dev/null | tr -d '[:space:]'))"
+  else say "cand prefs: 'defaults delete $CAND_ID' done, the file is gone"; fi
+  if [ -e "$CANDPREF" ] && [ "$(plutil -p "$CANDPREF" 2>/dev/null | tr -d '[:space:]')" = "{}" ]; then
+    rm -f "$CANDPREF"; sleep 5
+    if [ -e "$CANDPREF" ]; then say "cand prefs: the empty $CANDPREF came back after rm: left, logged"
+    else say "cand prefs: empty after the delete: rm'd, still gone after 5 s"; fi
+  fi
+  grep 'cand prefs:' $O/run.out 2>/dev/null >> $O/cand-prefs.txt
+}
 # the candidate's userData in the world (userdata.ts standInPaths: HOME is the world's): window-frame.json
 drive() { AS_HE_DOES_USERDATA="$H/Library/Application Support/$(basename "$A" .app)" AS_HE_DOES_TAG=${TAG:-} node $HERE/driver.mjs $PORT_CDP $O "$@" > $O/driver-$1${TAG:+-$TAG}.log 2>&1; tail -4 $O/driver-$1${TAG:+-$TAG}.log; breach; }
 
@@ -207,6 +222,10 @@ if [ "${AS_HE_DOES_ONLY:-}" = quick ]; then
   stopcand; breach; libgate first-stop
   touch $O/stop; wait $FPID $CCPID; kill $TPID $NPID $CPID 2>/dev/null
   kill $(cat $G/fake/fake.pid) 2>/dev/null
+  w=$(ps -axo pid=,command= | grep -F "$G/w" | grep -v grep | awk '{print $1}'); [ -n "$w" ] && killpids $w
+  candprefs
+  libgate final
+  say "his app after: $(hispids)" | tee -a $O/his.txt
   say "done (quick)"; exit 0
 fi
 drive first
@@ -240,18 +259,7 @@ kill $(cat $G/fake/fake.pid) 2>/dev/null
 say "realshape core with no env"
 $RS core --bundle "$A" --out $O/core-noenv 2>&1 | tail -10
 w=$(ps -axo pid=,command= | grep -F "$G/w" | grep -v grep | awk '{print $1}'); [ -n "$w" ] && killpids $w
-# the candidate's own preferences domain goes through cfprefsd first (it caches and writes back)
-defaults delete "$CAND_ID" > $O/cand-prefs-delete.txt 2>&1; echo "rc=$?" >> $O/cand-prefs-delete.txt
-if [ -e "$CANDPREF" ]; then say "cand prefs: 'defaults delete $CAND_ID' done, the file is still there ($(stat -f %z "$CANDPREF") bytes, $(plutil -p "$CANDPREF" 2>/dev/null | tr -d '\n '))"
-else say "cand prefs: 'defaults delete $CAND_ID' done, the file is gone"; fi
-# an emptied domain can leave its file as '{}' (run 40fc444d): only then rm it, and check after ~5 s
-# that cfprefsd didn't write it back. cfprefsd itself is never touched (ambient-lead m_20883)
-if [ -e "$CANDPREF" ] && [ "$(plutil -p "$CANDPREF" 2>/dev/null | tr -d '[:space:]')" = "{}" ]; then
-  rm -f "$CANDPREF"; sleep 5
-  if [ -e "$CANDPREF" ]; then say "cand prefs: the empty $CANDPREF came back after rm: left, logged"
-  else say "cand prefs: empty after the delete: rm'd, still gone after 5 s"; fi
-fi
-grep 'cand prefs:' $O/run.out 2>/dev/null >> $O/cand-prefs.txt
+candprefs
 libgate final
 [ -s $O/hubs-steps.jsonl ] && jq -s '{mode: "hubs-outside", steps: .}' $O/hubs-steps.jsonl > $O/hubs-outside.json
 say "his app after: $(hispids)" | tee -a $O/his.txt

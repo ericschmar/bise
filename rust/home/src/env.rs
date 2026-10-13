@@ -56,20 +56,31 @@ pub struct Var {
     /// bench file, the sb-core the tests run), never a place: the test
     /// home (`test_home::enter`) keeps it, where it unsets the others.
     pub kept_in_tests: bool,
+    /// A test setting of the voice fake that the desktop app also hands
+    /// its core in an off-screen run outside test mode (childenv.ts, read
+    /// from env_vars.gen.ts), never its terminal shells: so a packed app
+    /// checked off-screen can dictate with the fake voice. The core's own
+    /// rule stays the guard (`voice_of`: --offscreen and an isolated home,
+    /// never the real mic). architect m_22561.
+    pub offscreen_core: bool,
 }
 
 const fn user(name: &'static str, what: &'static str) -> Var {
-    Var { name, kind: Kind::User, what, kept_in_tests: false }
+    Var { name, kind: Kind::User, what, kept_in_tests: false, offscreen_core: false }
 }
 const fn internal(name: &'static str, what: &'static str) -> Var {
-    Var { name, kind: Kind::Internal, what, kept_in_tests: false }
+    Var { name, kind: Kind::Internal, what, kept_in_tests: false, offscreen_core: false }
 }
 const fn test(name: &'static str, what: &'static str) -> Var {
-    Var { name, kind: Kind::Test, what, kept_in_tests: false }
+    Var { name, kind: Kind::Test, what, kept_in_tests: false, offscreen_core: false }
 }
 /// A test setting the test home keeps ([`Var::kept_in_tests`]).
 const fn test_input(name: &'static str, what: &'static str) -> Var {
-    Var { name, kind: Kind::Test, what, kept_in_tests: true }
+    Var { name, kind: Kind::Test, what, kept_in_tests: true, offscreen_core: false }
+}
+/// A voice-fake test setting an off-screen app's core gets ([`Var::offscreen_core`]).
+const fn test_offscreen_core(name: &'static str, what: &'static str) -> Var {
+    Var { name, kind: Kind::Test, what, kept_in_tests: false, offscreen_core: true }
 }
 
 /// Every bise variable, sorted by name.
@@ -110,7 +121,7 @@ pub const VARS: &[Var] = &[
     internal("BEND_WIRE_LOG", "a REPL's event log, read by the hub"),
     internal("BEND_WORKDIR", "an agent's working directory"),
     user("BISE_AGENT_MODEL", "the agents' model"),
-    test("BISE_AMBIENT_FAKE_VOICE", "the ambient core's fake voice: a file of words read at talk_start (harness A, ambient-qa)"),
+    test_offscreen_core("BISE_AMBIENT_FAKE_VOICE", "the ambient core's fake voice: a file of words read at talk_start (harness A, ambient-qa)"),
     user("BISE_APPROVALS", "the approvals mode of this session"),
     internal("BISE_APP_ROOT", "the app root of the hub a TUI or a version switch starts"),
     user("BISE_ASCII", "ASCII-only drawing"),
@@ -176,8 +187,8 @@ pub const VARS: &[Var] = &[
     user("BISE_VOICE_BARGE", "1: your voice may cut the reply"),
     user("BISE_VOICE_DEBUG", "the voice mode's debug log"),
     test("BISE_VOICE_FAKE", "the voice mode's fake (tests)"),
-    test("BISE_VOICE_FAKE_HEARD", "what the voice fake hears (tests)"),
-    test("BISE_VOICE_FAKE_HEARD_MS", "how long the ambient core's fake listener takes to flush, a batch request's time (the dictation repro)"),
+    test_offscreen_core("BISE_VOICE_FAKE_HEARD", "what the voice fake hears (tests)"),
+    test_offscreen_core("BISE_VOICE_FAKE_HEARD_MS", "how long the ambient core's fake listener takes to flush, a batch request's time (the dictation repro)"),
     user("BISE_VOICE_MODEL", "the voice model"),
     internal("SB_AGENT", "an agent's name, for its sb"),
     test_input("SB_BENCH_JOURNAL", "a journal to bench (an ignored test)"),

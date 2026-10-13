@@ -117,7 +117,7 @@ def json(x: Link) -> J.Json:
 
 type Answer is Data:
   # step
-  AStep{fx: List<&2, J.Json>, dirty: Bool, view: J.Json, msg: Maybe<&2, Nat>}
+  AStep{fx: List<&2, J.Json>, dirty: Bool, view: J.Json, msg: Maybe<&2, Nat>, ans_card: Maybe<&2, Nat>, ans_who: Maybe<&2, String>, ans_said: Maybe<&2, String>, ans_ask: Maybe<&2, String>, ans_pick: Maybe<&2, String>}
   # need
   ANeed{need: J.Json}
   # view
@@ -132,7 +132,7 @@ type Answer is Data:
   ADone{}
 
 def AStep.of(+i: J.Json) -> Answer:
-  AStep{K.get_js(i, "fx"), K.get_b(i, "dirty"), K.get_j(i, "view"), K.opt_n(J.get(i, "msg"))}
+  AStep{K.get_js(i, "fx"), K.get_b(i, "dirty"), K.get_j(i, "view"), K.opt_n(J.get(i, "msg")), K.opt_n(J.get(i, "ans_card")), K.opt_s(J.get(i, "ans_who")), K.opt_s(J.get(i, "ans_said")), K.opt_s(J.get(i, "ans_ask")), K.opt_s(J.get(i, "ans_pick"))}
 
 def ANeed.of(+i: J.Json) -> Answer:
   ANeed{K.get_j(i, "need")}
@@ -154,8 +154,8 @@ def ADone.of(i: J.Json) -> Answer:
 
 def answer_kvs(x: Answer) -> List<&2, Sigma<&2, &2, String, _ => J.Json>>:
   match x:
-    case AStep{+fx, +dirty, +view, +msg}:
-      K.cat([[J.kv("fx", J.JArr{fx}), J.kv("dirty", J.JBool{dirty}), J.kv("view", view)], K.omit_mn("msg", msg)])
+    case AStep{+fx, +dirty, +view, +msg, +ans_card, +ans_who, +ans_said, +ans_ask, +ans_pick}:
+      K.cat([[J.kv("fx", J.JArr{fx}), J.kv("dirty", J.JBool{dirty}), J.kv("view", view)], K.omit_mn("msg", msg), K.omit_mn("ans_card", ans_card), K.omit_ms("ans_who", ans_who), K.omit_ms("ans_said", ans_said), K.omit_ms("ans_ask", ans_ask), K.omit_ms("ans_pick", ans_pick)])
     case ANeed{+need}:
       [J.kv("need", need)]
     case AView{+view}:
@@ -172,8 +172,8 @@ def answer_kvs(x: Answer) -> List<&2, Sigma<&2, &2, String, _ => J.Json>>:
 def answer_json(x: Answer) -> J.Json:
   J.obj(answer_kvs(x))
 
-def answer_step(+fx: List<&2, J.Json>, +dirty: Bool, +view: J.Json, +msg: Maybe<&2, Nat>) -> J.Json:
-  answer_json(AStep{fx, dirty, view, msg})
+def answer_step(+fx: List<&2, J.Json>, +dirty: Bool, +view: J.Json, +msg: Maybe<&2, Nat>, +ans_card: Maybe<&2, Nat>, +ans_who: Maybe<&2, String>, +ans_said: Maybe<&2, String>, +ans_ask: Maybe<&2, String>, +ans_pick: Maybe<&2, String>) -> J.Json:
+  answer_json(AStep{fx, dirty, view, msg, ans_card, ans_who, ans_said, ans_ask, ans_pick})
 
 def answer_need(+need: J.Json) -> J.Json:
   answer_json(ANeed{need})

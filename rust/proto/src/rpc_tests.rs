@@ -247,6 +247,35 @@ fn send_results_round_trip() {
     assert!(OWN_RESULTS.contains(&("turn/send", "SendResult")));
 }
 
+/// card/answer's result (inbox picks (3)): its fixtures read back as
+/// themselves; a step's ans_* make it with the thread row's words, and a
+/// step with none (an older sb-core's, no card answered) makes none.
+#[test]
+fn answer_results_come_from_the_step() {
+    for v in fixture("answer_result.jsonl") {
+        let r: AnswerResult = serde_json::from_value(v.clone()).unwrap();
+        assert_eq!(serde_json::to_value(&r).unwrap(), v);
+    }
+    assert!(OWN_RESULTS.contains(&("card/answer", "AnswerResult")));
+    let step = |pick: Option<&str>, said: &str| crate::core::link::AStep {
+        ans_card: Some(3),
+        ans_who: Some("docs".into()),
+        ans_said: Some(said.into()),
+        ans_ask: Some("where?\n1. at every step\n2. only at checkout".into()),
+        ans_pick: pick.map(|p| p.into()),
+        ..Default::default()
+    };
+    assert_eq!(serde_json::from_value::<AnswerResult>(serde_json::json!({})).unwrap().answer, None);
+    let r = CardAnswer::of_step(&step(Some("only at checkout"), "2")).unwrap();
+    assert_eq!((r.agent.as_str(), r.said.as_str(), r.pick.as_deref()), ("docs", "2", Some("only at checkout")));
+    assert_eq!((r.notice.as_str(), r.note.as_str()), ("you answered docs: only at checkout", ""));
+    assert_eq!(r.question, "where?\n1. at every step\n2. only at checkout");
+    let long = "not before the release notes are written";
+    let r = CardAnswer::of_step(&step(None, long)).unwrap();
+    assert_eq!((r.notice.as_str(), r.note.as_str(), r.pick), ("you answered docs", long, None));
+    assert_eq!(CardAnswer::of_step(&crate::core::link::AStep::default()), None);
+}
+
 #[test]
 fn initialize_lists_every_method_and_notification() {
     let ms = methods();

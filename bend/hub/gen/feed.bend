@@ -58,8 +58,8 @@ def approval(+how: String, +who: String, +what: String, +note: String) -> J.Json
 def card_closed(+id: Nat, +res: String) -> J.Json:
   J.obj([J.kv("sb", J.JStr{"card-closed"}), J.kv("id", J.JNum{id}), J.kv("res", J.JStr{res})])
 
-def route(+who: String, +card: Maybe<&2, Nat>, +said: String) -> J.Json:
-  J.obj(K.cat([[J.kv("sb", J.JStr{"route"})], [J.kv("who", J.JStr{who})], K.omit_mn("card", card), [J.kv("said", J.JStr{said})]]))
+def route(+who: String, +card: Maybe<&2, Nat>, +said: String, +msg: Maybe<&2, Nat>, +pick_n: Maybe<&2, Nat>, +pick: Maybe<&2, String>) -> J.Json:
+  J.obj(K.cat([[J.kv("sb", J.JStr{"route"})], [J.kv("who", J.JStr{who})], K.omit_mn("card", card), [J.kv("said", J.JStr{said})], K.omit_mn("msg", msg), K.omit_mn("pick_n", pick_n), K.omit_ms("pick", pick)]))
 
 def pr(+state: String, +number: Nat, +url: String, +text: String) -> J.Json:
   J.obj([J.kv("sb", J.JStr{"pr"}), J.kv("v", J.JNum{1n}), J.kv("state", J.JStr{state}), J.kv("number", J.JNum{number}), J.kv("url", J.JStr{url}), J.kv("text", J.JStr{text})])

@@ -47,7 +47,13 @@ pub enum Answer {
 /// you-id line carries when it is delivered (A1, architect m_21450:
 /// `turn/send`'s result hands it to the asker); none when the step made
 /// none, and from an older sb-core.
-#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+/// `ans_*`: his answer to a card in this step (inbox picks (3),
+/// architect m_22636), from the one answer that wrote its route line
+/// (core.bend answer_line): the card, who asked, what he said, the card's
+/// question, his pick (an option's words). card, who, said and ask all
+/// set or all absent, pick only with them (laws in bend/laws/threads.bend);
+/// none from an older sb-core.
+#[derive(Clone, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct AStep {
     #[serde(with = "fx_list")]
     pub fx: Vec<Fx>,
@@ -57,6 +63,16 @@ pub struct AStep {
     pub view: serde_json::Value,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub msg: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ans_card: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ans_who: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ans_said: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ans_ask: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ans_pick: Option<String>,
 }
 
 /// A git answer is missing: the hub runs the query and sends the same
@@ -147,7 +163,8 @@ pub const ANSWER: Table = Table {
     name: "Answer",
     tag_key: "",
     kinds: &[
-        Kind { tag: "step", rust: "Step", bend: "AStep", fields: &[Field::new("fx", FieldKind::Jsons), Field::new("dirty", FieldKind::Bool), Field::new("view", FieldKind::Json), Field::new("msg", FieldKind::OptNatOmit)] },
+        Kind { tag: "step", rust: "Step", bend: "AStep", fields: &[Field::new("fx", FieldKind::Jsons), Field::new("dirty", FieldKind::Bool), Field::new("view", FieldKind::Json), Field::new("msg", FieldKind::OptNatOmit),
+            Field::new("ans_card", FieldKind::OptNatOmit), Field::new("ans_who", FieldKind::OptStrOmit), Field::new("ans_said", FieldKind::OptStrOmit), Field::new("ans_ask", FieldKind::OptStrOmit), Field::new("ans_pick", FieldKind::OptStrOmit)] },
         Kind { tag: "need", rust: "Need", bend: "ANeed", fields: &[Field::new("need", FieldKind::Json)] },
         Kind { tag: "view", rust: "View", bend: "AView", fields: &[Field::new("view", FieldKind::Json)] },
         Kind { tag: "skipped", rust: "Skipped", bend: "ASkipped", fields: &[Field::new("skipped", FieldKind::Bool)] },

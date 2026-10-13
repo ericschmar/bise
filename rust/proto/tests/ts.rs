@@ -66,7 +66,7 @@ fn modules(cfg: &Config) -> Vec<(&'static str, Vec<Decl>)> {
         module!(cfg, "log": log::LogRole, log::LogBodyKind, log::LogBody, log::LogItem),
         module!(cfg, "ops": ops::BranchRow, ops::VersionItem, ops::ReleaseEv, ops::UpdateEv),
         module!(cfg, "hub": hub::JobState, hub::Job, hub::HubEv, hub::Mode, hub::SendOpts, hub::HubCmd, hub::ErrorKind),
-        module!(cfg, "rpc": rpc::Id, rpc::Request, rpc::Notification, rpc::Response, rpc::ErrorData, rpc::RpcError, rpc::Watermark, rpc::ClientInfo, rpc::InitializeParams, rpc::HubState, rpc::InitializeResult, rpc::CommandsList, rpc::CommandRunResult, rpc::SendResult),
+        module!(cfg, "rpc": rpc::Id, rpc::Request, rpc::Notification, rpc::Response, rpc::ErrorData, rpc::RpcError, rpc::Watermark, rpc::ClientInfo, rpc::InitializeParams, rpc::HubState, rpc::InitializeResult, rpc::CommandsList, rpc::CommandRunResult, rpc::SendResult, rpc::CardAnswer, rpc::AnswerResult),
         module!(cfg, "commands": commands::WordRow, commands::ArgRow, commands::CommandRow),
         module!(cfg, "draft": draft::Quote, draft::Queued, draft::DraftHubCmd, draft::ProjectRow, draft::OpenWhat, draft::Account, draft::Found, draft::AwayProject, draft::Plugin, draft::PluginLogin, draft::CuRow, draft::ComputerAgent, draft::LiveKind, draft::PeekShot, draft::VoiceLit, draft::RoleRow, draft::Runs, draft::PickChoice, draft::PickArg, draft::PickCommand, draft::PickSkill, draft::PickFile, draft::PickFolder, draft::CoreEv, draft::AppCmd, draft::TalkPage, draft::ProjectView, draft::IndexRow),
         module!(cfg, "helper": helper::HelperEv, helper::Responsible, helper::FnAct, helper::TalkKey, helper::Grant, helper::QuietWhy, helper::Perm, helper::PermAction, helper::HelperCmd),
@@ -91,6 +91,7 @@ const FIXTURES: &[(&str, &str, &str)] = &[
     ("pty_cmd.jsonl", "PtyCmd", "pty"),
     ("command_run_result.jsonl", "CommandRunResult", "rpc"),
     ("send_result.jsonl", "SendResult", "rpc"),
+    ("answer_result.jsonl", "AnswerResult", "rpc"),
 ];
 
 fn proto_dir() -> PathBuf {
@@ -251,6 +252,9 @@ fn render_chips() -> String {
     writeln!(s).unwrap();
     writeln!(s, "export const IMAGE_EXTS = [{}] as const;", list(parts::IMAGE_EXTS)).unwrap();
     writeln!(s, "export const DOC_EXTS = [{}] as const;", list(parts::DOC_EXTS)).unwrap();
+    let marks = parts::NO_SPACE_BEFORE.iter().map(|c| format!("{:?}", c.to_string())).collect::<Vec<_>>().join(", ");
+    writeln!(s, "// the marks that take no space after a chip ('❝ 1, which?')").unwrap();
+    writeln!(s, "export const NO_SPACE_BEFORE = [{marks}] as const;").unwrap();
     s
 }
 

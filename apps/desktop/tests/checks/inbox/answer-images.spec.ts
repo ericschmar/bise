@@ -48,7 +48,7 @@ test("inbox/answer-images: an image pasted on a card's answer (the block's, in t
       await expect(page.getByTestId('inbox.block.open.1')).toBeVisible({ timeout: 3000 });
       const composer = '[data-testid="composer.field"]';
       await pasteImage(page, composer, PNG);
-      await expect(page.locator('[data-testid="composer"]')).toContainText('image 1', { timeout: 5000 });
+      await expect(page.locator('[data-testid^="composer.chip."][data-kind="image"]'), 'the image chip in the answer').toHaveCount(1, { timeout: 5000 });
       await page.locator(composer).first().click();
       await page.keyboard.press('End');
       await page.keyboard.type(' warm, like this');
@@ -89,7 +89,7 @@ test("inbox/answer-images: a file dropped on a card's answer is a file chip and 
     await dropFiles(page, composer, [csv]);
     const chip = page.locator('[data-testid^="composer.chip."][data-kind="file"]');
     await expect(chip, 'a file chip, as the composer makes one').toHaveCount(1, { timeout: 5000 });
-    await expect(chip).toContainText('bench.csv');
+    await expect(page.locator('[data-testid^="composer.attach."][data-kind="file"] .nm'), 'its row in the box names it').toHaveText('bench.csv');
     await page.keyboard.press('Enter');
     await expect.poll(() => answers(core).length, { timeout: 3000 }).toBe(1);
     const a = answers(core)[0] as Cmd & { parts?: { kind: string; name?: string; path?: string; text?: string }[] };

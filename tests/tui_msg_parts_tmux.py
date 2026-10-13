@@ -187,6 +187,10 @@ def main():
                         {"kind": "quote", "from": "main", "text": "le process"}, {"kind": "text", "text": words}]}
                 r = c.rpc("card/answer", params)
                 assert "error" not in r, r
+                # inbox picks (3): the result is his answer as sb-core wrote it
+                res = r.get("result", {}).get("answer", {})
+                expect(res.get("agent") == "t3" and res.get("question", "").startswith(ask) and words in res.get("said", "")
+                       and res.get("notice", "").startswith("you answered t3") and "pick" not in res, "card/answer's result (%s): %r" % (how, res))
             c.wait(lambda: not c.cards(), 30, "the card answered")
             sc = t.wait(words, 30)
             shot("card-answer-" + how)

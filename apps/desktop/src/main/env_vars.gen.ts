@@ -75,3 +75,10 @@ export const TEST_VARS = [
   'SB_VOICE',
   'SB_VOICE_FAKE_MIC',
 ] as const;
+
+/** a voice-fake test knob the core also gets in an off-screen run, never the terminal shells (Var::offscreen_core) */
+export const OFFSCREEN_CORE_VARS = [
+  'BISE_AMBIENT_FAKE_VOICE',
+  'BISE_VOICE_FAKE_HEARD',
+  'BISE_VOICE_FAKE_HEARD_MS',
+] as const;

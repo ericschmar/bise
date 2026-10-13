@@ -54,6 +54,19 @@ function cornerOf(d: DisplayBox): { right: number; bottom: number } {
   return { right: right - CORNER, bottom: bottom - CORNER };
 }
 
+/** Which side of the display the Dock takes (the work area's widest gap past NO_DOCK), or 'hidden'. Pure. */
+export function dockOf(d: DisplayBox): 'bottom' | 'right' | 'left' | 'hidden' {
+  const b = d.bounds;
+  const wa = d.workArea;
+  const gaps = [
+    ['bottom', b.y + b.height - (wa.y + wa.height)],
+    ['right', b.x + b.width - (wa.x + wa.width)],
+    ['left', wa.x - b.x],
+  ] as const;
+  const [side, gap] = gaps.reduce((a, g) => (g[1] > a[1] ? g : a));
+  return gap < NO_DOCK ? 'hidden' : side;
+}
+
 /** Where a window goes to be on no display (test mode, BISE_DESKTOP_OFFSCREEN): far from every real one. */
 export const OFF = -30000;
 

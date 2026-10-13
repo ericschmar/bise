@@ -1774,7 +1774,7 @@ fn answering_mains_card_routes_it_and_notes_main() {
         })
         .collect();
     let routes: Vec<_> = recs.iter().filter_map(|h| match h {
-        Hub::Route { who, card: c, said } => Some((who.clone(), *c, lines::unescape(said))),
+        Hub::Route { who, card: c, said, .. } => Some((who.clone(), *c, lines::unescape(said))),
         _ => None,
     }).collect();
     assert_eq!(routes, vec![(MAIN.to_string(), card, "this one\nand the second line".to_string())], "{fx:?}");

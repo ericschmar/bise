@@ -156,11 +156,9 @@ pub(crate) fn attach_clipboard(app: &mut App) -> Result<String, String> {
     Ok(add(app, &source, CLIPBOARD, original, &stored))
 }
 
-/// The message to send, as typed parts (msg-parts) and their text
-/// (`parts::render`, the one template): each chip still present is its
-/// part where it was, in text order; a quote with its chip's number, so
-/// it sits at its place in his words ("regarding ❝ 3, …", his m_22231,
-/// the window's composer the same); the attachments start over.
+/// The message to send as typed parts (msg-parts): each chip still in the
+/// text is its part where it was, a quote with its number (his m_22231,
+/// as the window's composer); the attachments start over.
 pub(crate) fn expand(app: &mut App, text: &str) -> crate::said::Said {
     use bise_proto::parts::Part;
     let atts = std::mem::take(&mut app.attachments);
@@ -172,6 +170,8 @@ pub(crate) fn expand(app: &mut App, text: &str) -> crate::said::Said {
         }
         parts.push(part_of(a));
         rest = &rest[at + a.label.len()..];
+        // the chip's own space goes before a mark ('❝ 1, which?', NO_SPACE_BEFORE, architect m_22426)
+        rest = rest.strip_prefix(' ').filter(|t| t.starts_with(bise_proto::parts::NO_SPACE_BEFORE)).unwrap_or(rest);
     }
     if !rest.is_empty() {
         parts.push(Part::Text { text: rest.to_string() });

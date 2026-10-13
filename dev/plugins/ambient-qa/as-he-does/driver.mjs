@@ -1222,8 +1222,10 @@ async function newRows(harness, say) {
     await page.waitForTimeout(2500);
     const afterEsc = { keyLine: await keyLine(), stopping: (await page.locator('[data-testid="thread.stopping"]').count()) > 0 };
     step('esc during a turn does not stop it (the turn still runs 2.5 s later)', !!working && afterEsc.keyLine && !afterEsc.stopping, { working: !!working, afterEsc });
+    // esc with words puts them away to history (keys.ts putAway, ↑ brings them back): a new draft
+    // for ctrl+c to keep
     await field.click({ timeout: 3000 }).catch(() => {});
-    await page.keyboard.press('End');
+    await page.keyboard.type('garde ça', { delay: 10 });
     await page.keyboard.press('Control+c');
     const stopping = await until(async () => {
       const s = (await page.locator('[data-testid="thread.stopping"]').count()) > 0;
@@ -1279,12 +1281,16 @@ async function newRows(harness, say) {
     await page.keyboard.press('Enter');
     // the bubble: before, the quote, after, in that order
     const bubble = await until(async () => page.evaluate(() => {
-      const mine = [...document.querySelectorAll('[data-testid="thread.list"] [data-testid^="thread.entry."]')].filter((r) => (r.textContent ?? '').includes('before') && (r.textContent ?? '').includes('after'));
+      // his bubble, never bise's ack that echoes 'before … after' (cand-e91f98d7 run): it holds the chip
+      const mine = [...document.querySelectorAll('[data-testid="thread.list"] [data-testid^="thread.entry."]')].filter((r) => (r.textContent ?? '').includes('before') && (r.textContent ?? '').includes('after') && /[❝“]/.test(r.textContent ?? ''));
       const b = mine.at(-1);
       if (!b) return null;
       const t = b.textContent ?? '';
-      const q = b.querySelector('[data-kind="quote"], [class*="quote"]');
-      return { text: t.slice(0, 300), quote: q ? (q.textContent ?? '').slice(0, 120) : null, order: q ? [t.indexOf('before'), t.indexOf(q.textContent ?? '\u0000'), t.indexOf('after')] : null };
+      // the bubble's own words (its text parts, not the quote card above them): before, the chip, after
+      const parts = b.querySelector('[data-testid$=".parts"]') ?? b;
+      const words = (parts.textContent ?? '').replace(/\s+/g, ' ');
+      const chip = words.search(/[❝“"]\s*1/);
+      return { text: t.slice(0, 300), words: words.slice(0, 200), order: [words.indexOf('before'), chip, words.indexOf('after', Math.max(chip, 0))] };
     }), 10000, 500);
     await shot('quote-mid-sentence-bubble');
     const inPlace = (o) => !!o && o[0] >= 0 && o[1] > o[0] && o[2] > o[1];
@@ -1342,6 +1348,10 @@ async function newRows(harness, say) {
     if (!VOICE) { step('the fn talk corner card', false, 'no fake voice (AS_HE_DOES_VOICE)'); return; }
     await harness();
     fs.writeFileSync(VOICE, 'what time is it');
+    // amb-mac e3e5b750: off-screen, each capsule show/move appends where place.ts would put it
+    const CFR = process.env.AS_HE_DOES_USERDATA ? path.join(process.env.AS_HE_DOES_USERDATA, 'capsule-frames.jsonl') : null;
+    const cfrLines = () => { try { return fs.readFileSync(CFR, 'utf8').split(String.fromCharCode(10)).filter(Boolean); } catch { return []; } };
+    const cfrBefore = cfrLines().length;
     // no helper off-screen: the talk starts and ends as the capsule's fn would send them
     await page.evaluate(() => window.bise.core.send({ cmd: 'talk_start' }));
     await page.waitForTimeout(1500);
@@ -1360,19 +1370,32 @@ async function newRows(harness, say) {
     let frame = null;
     const cp = capPage();
     if (cp) {
+      // Electron's CDP has no Browser.getWindowForTarget: the page's own window.screenX/Y is its frame
       try {
-        const s = await cp.context().newCDPSession(cp);
-        const { targetInfo } = await s.send('Target.getTargetInfo');
-        const b = await browser.newBrowserCDPSession();
-        const w = await b.send('Browser.getWindowForTarget', { targetId: targetInfo.targetId });
-        frame = { bounds: w.bounds, screen: await cp.evaluate(() => ({ w: window.screen.width, h: window.screen.height })) };
+        frame = await cp.evaluate(() => ({ bounds: { left: window.screenX, top: window.screenY, width: window.outerWidth, height: window.outerHeight }, screen: { w: window.screen.width, h: window.screen.height } }));
       } catch (e) { frame = { error: String(e).slice(0, 200) }; }
       try { await cp.screenshot({ path: path.join(out, `${mode}${tag}-corner-card.png`) }); res.shots.push(path.join(out, `${mode}${tag}-corner-card.png`)); save(); } catch { /* the steps say enough */ }
     }
-    step('the fn talk corner card: his words and the answer', !!seen, seen ?? { capsule: !!cp });
-    // off-screen rule (offscreen.ts): every window at -30000, never on a screen
-    const off = !!frame?.bounds && (frame.bounds.left <= -20000 || frame.bounds.top <= -20000 || frame.bounds.windowState === 'minimized');
-    step('its window frame is off every screen (the off-screen rule: -30000)', off, frame);
+    // the talk itself, without the card: his words reach the model (the capsule enters a talk only
+    // from the helper's fn, machine.ts, and off-screen runs no helper, offscreen.ts)
+    const LOG = process.env.AS_HE_DOES_FAKE_LOG;
+    const heard = LOG && fs.existsSync(LOG) ? fs.readFileSync(LOG, 'utf8').includes('what time is it') : null;
+    step("the fn talk's words reach main's model (core talk_start/talk_end)", heard === true, { log: LOG ?? 'AS_HE_DOES_FAKE_LOG not set', heard });
+    step('the fn talk corner card: his words and the answer', !!seen, seen ?? { capsule: !!cp, why: 'off-screen has no helper: the capsule never enters a talk from a core talk_start alone' });
+    // where the card would sit on his display (capsule-frames.jsonl): bottom-right 16 px inside the
+    // work area (capsuleframe.test.ts); the real window stays parked off every screen
+    const recs = cfrLines().slice(cfrBefore).map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+    const corner = recs.filter((r) => r.mode === 'corner');
+    const ruleOf = (r) => ({ ev: r.ev, dock: r.dock, right: r.bounds.x + r.bounds.width, wantRight: r.work.x + r.work.width - 16, bottom: r.bounds.y + r.bounds.height, wantBottom: r.work.y + r.work.height - 16, bounds: r.bounds, parked: r.parked });
+    const rules = corner.map(ruleOf);
+    const ruleOk = rules.length > 0 && rules.every((r) => r.right === r.wantRight && r.bottom === r.wantBottom);
+    step('the corner card frame: bottom-right 16 px inside the work area (capsule-frames.jsonl)', ruleOk, rules.length ? rules : { file: CFR ?? 'AS_HE_DOES_USERDATA not set', records: recs.length, why: recs.length ? 'no corner show' : 'no capsule show off-screen (no helper fn): nothing written' });
+    // off-screen rule (offscreen.ts): every window at -30000, never on a screen; the file's parked
+    // frame first, else the page's own screenX/Y
+    const parked = corner.map((r) => r.parked);
+    const off = parked.length ? parked.every((p) => p.x <= -20000 || p.y <= -20000)
+      : !!frame?.bounds && (frame.bounds.left <= -20000 || frame.bounds.top <= -20000 || frame.bounds.windowState === 'minimized');
+    step('its window frame is off every screen (the off-screen rule: -30000)', off, parked.length ? { parked } : frame);
     const t0 = Date.now();
     const closed = await until(async () => {
       const r = await capPage()?.evaluate(() => !document.querySelector('[data-testid="capsule.card"]')).catch(() => null);

@@ -36,6 +36,8 @@ import { SignInLine, useThreadSignIn } from './signin';
 import { type ThreadListHandle } from './ThreadList';
 import { ComputerLine } from './ComputerLine';
 import { entryKey } from './entry';
+import { quoteSourcePos } from './quote';
+import { QUOTE_SOURCE_EVENT } from '@/composer/pm/AttachList';
 import { FindBar } from './FindBar';
 import { BisePearl } from '@/app/BisePearl';
 import { createFindMark, FindMarkContext } from './findmark';
@@ -118,6 +120,26 @@ export function ThreadScreen({ project, agent, bise = false, projectName, artifa
   const [mark] = useState(createFindMark);
   const [folds] = useState(() => createFolds(`${project}/${agent}`));
   const list = useRef<ThreadListHandle>(null);
+  // a quote's row in the composer's attachment list: its words' entry here comes into view and flashes
+  useEffect(() => {
+    const go = (e: Event): void => {
+      const { text } = (e as CustomEvent<{ from: string; text: string }>).detail;
+      const pos = quoteSourcePos(store, tkey, text);
+      if (pos === null) return;
+      list.current?.scrollTo(entryKey(pos));
+      window.setTimeout(() => {
+        const el = document.querySelector<HTMLElement>(`[data-testid="thread.entry.${String(pos)}"]`);
+        if (el === null) return;
+        el.classList.remove('th-flash');
+        el.getBoundingClientRect(); // a reflow: the flash runs again on a second click
+        el.classList.add('th-flash');
+      }, 120);
+    };
+    window.addEventListener(QUOTE_SOURCE_EVENT, go);
+    return () => {
+      window.removeEventListener(QUOTE_SOURCE_EVENT, go);
+    };
+  }, [store, tkey]);
   // H10 (designer m_19835): scrolled up to read, the inbox block is one line and the composer's keys line hides
   const [reading, setReading] = useState(false);
   // his bug 3: a selection in the thread, then a key, quotes it in the composer

@@ -61,8 +61,11 @@ core_kinds! {
         /// a card closed (`res`: answered, closed, …)
         CardClosed = "card-closed" => RCardClosed { id: Nat, res: Str },
         /// his words routed to `who`: his answer to card `card`, or (none)
-        /// his message to that agent
-        Route = "route" => RRoute { who: Str, card: OptNatOmit, said: Str },
+        /// his message to that agent. `msg`: the message his answer
+        /// became (the asker's thread folds its msg-in into this row);
+        /// `pick_n`/`pick`: an option's number and its words when his
+        /// answer was one of the card's options (both or neither)
+        Route = "route" => RRoute { who: Str, card: OptNatOmit, said: Str, msg: OptNatOmit, pick_n: OptNatOmit, pick: OptStrOmit },
         /// pr-news: `state` news|done|failing
         Pr = "pr" => RPr { v: Ver, state: Str, number: Nat, url: Str, text: Str },
         /// an artifact registered, its `version`

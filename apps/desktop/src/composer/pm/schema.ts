@@ -8,7 +8,7 @@
 //     send, not the draft), replaced by the words when the last ones come.
 // The node views are plain DOM (no React portal), drawn once per node: typing never renders React.
 import { Node } from '@tiptap/core';
-import { chipLabel, fileName, type Chip } from '../message';
+import { chipLabel, type Chip } from '../message';
 
 export const Doc = Node.create({ name: 'doc', topNode: true, content: 'paragraph' });
 
@@ -38,21 +38,22 @@ export function chipDom(c: Chip): HTMLElement {
   el.className = `b-chip ${c.kind}`;
   el.dataset.testid = `composer.chip.${c.n}`;
   el.dataset.kind = c.kind;
+  el.dataset.n = String(c.n);
   el.contentEditable = 'false';
   if (c.kind === 'image') {
-    // the sent bubble's chip (designer m_18135, signed 900f998e): the 16 px thumbnail (else the
-    // no-file glyph slot) and 'image 1' in ink; '[Image #1]' stays the copied text and the part's name
+    // the attachment list's number beside the 16 px thumbnail (else the no-file glyph slot), its
+    // name in the list's row (designer's composer-attachments A); '[Image #1]' stays the copied text
     el.title = c.name;
     el.append(c.thumb !== undefined ? thumbImg(c.thumb) : noFileGlyph());
-    el.append(imageChipWords(c.n));
+    el.append(String(c.n));
     return el;
   }
   if (c.kind === 'file') {
-    // file-chips (designer m_21765): the image chip's look, the file's 16 px system icon where the
-    // image has its thumbnail (▯ when there is none), and its name; '[File #2]' is the copied text
+    // '▯ 3' (or the file's 16 px system icon and 3): its name and size in the list's row
+    // (designer's composer-attachments A); '[File #3]' is the copied text
     el.title = c.path;
     el.append(c.icon !== undefined ? thumbImg(c.icon) : fileGlyph());
-    el.append(fileName(c.path));
+    el.append(String(c.n));
     return el;
   }
   el.append(chipLabel(c));

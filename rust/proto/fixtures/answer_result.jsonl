@@ -1,0 +1,3 @@
+{"answer":{"agent":"docs","question":"where does the balance show?\n1. at every step\n2. only at checkout","said":"2","pick":"only at checkout","notice":"you answered docs: only at checkout"}}
+{"answer":{"agent":"main","question":"merge?","said":"not yet, the release notes first please","notice":"you answered main","note":"not yet, the release notes first please"}}
+{}

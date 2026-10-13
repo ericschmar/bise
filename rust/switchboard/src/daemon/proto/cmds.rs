@@ -157,7 +157,14 @@ impl Shell {
                         (s.text, s.parts)
                     }
                 };
+                // inbox picks (3): his answer as sb-core wrote its route line
+                // comes back as the result; an older sb-core's: none ({})
+                self.hub.answered = None;
                 self.step_typed(id, &tag, Input::UserCmd { client: id, focus: MAIN.into(), cmd: UserCmd::Answer { card, text, parts } });
+                if let Some(a) = self.hub.answered.take() {
+                    let r = bise_proto::rpc::AnswerResult { answer: Some(a) };
+                    self.rpc_set_result(serde_json::to_value(r).unwrap_or_default());
+                }
                 self.page_answers();
             }
             // the TUI's /close handler with its field (Input::UserCmd, no

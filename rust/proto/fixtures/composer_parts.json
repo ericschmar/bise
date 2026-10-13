@@ -1,0 +1,30 @@
+[
+  {
+    "name": "a quote before a comma: no space after the chip (architect m_22426)",
+    "tui": "regarding [Quote #1] , which?",
+    "window": [
+      {"kind": "text", "text": "regarding "},
+      {"kind": "chip", "chip": {"kind": "quote", "n": 1, "text": "q", "from": "main"}},
+      {"kind": "text", "text": ", which?"}
+    ],
+    "parts": [
+      {"kind": "text", "text": "regarding "},
+      {"kind": "quote", "from": "main", "text": "q", "n": 1},
+      {"kind": "text", "text": ", which?"}
+    ]
+  },
+  {
+    "name": "a quote before a word: one space",
+    "tui": "regarding [Quote #1] the rest",
+    "window": [
+      {"kind": "text", "text": "regarding "},
+      {"kind": "chip", "chip": {"kind": "quote", "n": 1, "text": "q", "from": "main"}},
+      {"kind": "text", "text": " the rest"}
+    ],
+    "parts": [
+      {"kind": "text", "text": "regarding "},
+      {"kind": "quote", "from": "main", "text": "q", "n": 1},
+      {"kind": "text", "text": " the rest"}
+    ]
+  }
+]

@@ -11,9 +11,10 @@
 // One number sequence per draft for images, pastes and quotes (a number points at one chip).
 
 import type { Part } from '@/proto';
+import { NO_SPACE_BEFORE } from '@/proto/chips.gen';
 
 export type Chip =
-  | { readonly kind: 'image'; readonly n: number; readonly path: string; readonly name: string; readonly thumb?: string }
+  | { readonly kind: 'image'; readonly n: number; readonly path: string; readonly name: string; readonly thumb?: string; readonly w?: number; readonly h?: number; readonly bytes?: number }
   | { readonly kind: 'paste'; readonly n: number; readonly text: string }
   | { readonly kind: 'quote'; readonly n: number; readonly text: string; readonly from: string; readonly at?: QuoteAt }
   | { readonly kind: 'file'; readonly n: number; readonly path: string; readonly bytes?: number; readonly icon?: string }
@@ -120,6 +121,33 @@ export function chipStrip(c: Chip): string {
   }
 }
 
+/** A row of the attachment list in the composer's box (designer's composer-attachments A): its
+ *  name (a quote's or a paste's first words) and its facts in text-3; null for a chip with no row
+ *  (an artifact: a link in his words). The number is the chip's own `n`, never its place. Pure. */
+export function attachRow(c: Chip, home = ''): { readonly name: string; readonly info: string } | null {
+  switch (c.kind) {
+    case 'quote':
+      return { name: `“${preview(c.text, 60)}”`, info: quoteAbout(c.from, c.text, c.at) };
+    case 'paste': {
+      const kb = new TextEncoder().encode(c.text).length / 1000;
+      return { name: `“${preview(c.text, 60)}”`, info: `${String(lineCount(c.text))} lines · ${kb.toFixed(1)} kB` };
+    }
+    case 'image': {
+      // its pixels and its size, text-3, like a file's (designer m_22673): '1200×630 · 84 kB'
+      const dims = c.w !== undefined && c.h !== undefined ? `${String(c.w)}×${String(c.h)}` : '';
+      const info = [dims, c.bytes === undefined ? '' : sizeText(c.bytes)].filter((x) => x !== '').join(' · ');
+      return { name: c.name !== '' && !/^\[Image #\d+\]$/u.test(c.name) ? c.name : fileName(c.path), info };
+    }
+    case 'file': {
+      const dir = c.path.replace(/\/+$/u, '').split('/').slice(0, -1).join('/');
+      const where = home !== '' && (dir === home || dir.startsWith(`${home}/`)) ? `~${dir.slice(home.length)}` : dir;
+      return { name: fileName(c.path), info: [c.bytes === undefined ? '' : sizeText(c.bytes), where].filter((s) => s !== '').join(' · ') };
+    }
+    case 'artifact':
+      return null;
+  }
+}
+
 /** The send for these segments (architect's delta review D2: the window never templates; the hub
  *  renders the model's text from the parts, bise_proto::parts::render). A message of words alone
  *  goes as its text; one with a quote, a paste or an image goes as typed parts, each chip at its
@@ -128,6 +156,10 @@ export function chipStrip(c: Chip): string {
  *  it, main 18a32ce3). `text` is then his words with the chips' labels ('❝ 1', '▤ 1', '[Image #1]')
  *  for the composer's own rows (its strip, the pending row): the store sends none beside parts,
  *  the hub's text is render(parts) alone (architect m_22248). Empty: nothing to send. */
+/** A word comes next (not a space, not a mark of NO_SPACE_BEFORE, bise_proto::parts' one list):
+ *  the chip before it gets one space; before a mark, none ('❝ 1, which?'). */
+const wordFollows = (t: string): boolean => t !== '' && !/^\s/u.test(t) && !(NO_SPACE_BEFORE as readonly string[]).includes(t.charAt(0));
+
 export function buildMessage(segments: readonly Segment[]): Outgoing {
   const files: string[] = [];
   let quotes = 0;
@@ -143,7 +175,7 @@ export function buildMessage(segments: readonly Segment[]): Outgoing {
   let spaceNext = false;
   for (const s of segments) {
     if (s.kind === 'text') {
-      if (spaceNext && /^[^\s.,;:!?)\]]/u.test(s.text)) {
+      if (spaceNext && wordFollows(s.text)) {
         body += ' ';
         say(' ');
       }

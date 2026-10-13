@@ -55,8 +55,9 @@ test('thread/file-chips: a drop of documents makes file chips, ⏎ sends each wh
       const files = page.locator('[data-testid^="composer.chip."][data-kind="file"]');
       await expect(files, 'one file chip per document').toHaveCount(DOCS.length, { timeout: 5000 });
       await expect(page.locator('[data-testid^="composer.chip."][data-kind="image"]'), 'the image is an image chip').toHaveCount(1, { timeout: 5000 });
-      const names = (await files.allInnerTexts()).map((t) => t.replace('▯', '').trim());
-      expect(names, 'each chip says its file name, in the drop order').toEqual(DOCS);
+      // the chip says '▯ n', its name is its row in the box (designer's composer-attachments A)
+      const names = await page.locator('[data-testid^="composer.attach."][data-kind="file"] .nm').allInnerTexts();
+      expect(names, 'each document has its row with its file name, in the drop order').toEqual(DOCS);
       const order = await page.locator('[data-testid^="composer.chip."]').evaluateAll((els) => els.map((e) => e.getAttribute('data-kind')));
       expect(order, 'the image first, as dropped').toEqual(['image', ...DOCS.map(() => 'file')]);
       // words in his text: one space between two chips, never under 4 px (designer m_21957)

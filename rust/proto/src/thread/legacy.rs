@@ -193,7 +193,7 @@ fn route(text: &str) -> Option<Feed> {
         None if !to.contains(' ') => (to, None),
         None => return None,
     };
-    Some(Feed::Route(feed::Route { who: who.into(), card, said: said.into() }))
+    Some(Feed::Route(feed::Route { who: who.into(), card, said: said.into(), msg: None, pick_n: None, pick: None }))
 }
 
 #[cfg(test)]

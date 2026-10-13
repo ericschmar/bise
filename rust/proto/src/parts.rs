@@ -169,6 +169,13 @@ pub enum ChipKind {
     Text,
 }
 
+/// The marks that take no space after a chip: '❝ 1, which?', never
+/// '❝ 1 , which?' (architect m_22426). A chip followed by a word gets one
+/// space; followed by one of these, none. Both composers read it (the TUI's
+/// attach::expand, the window's buildMessage through `chips.gen.ts`), so
+/// one typed message gives the same parts from both.
+pub const NO_SPACE_BEFORE: &[char] = &['.', ',', ';', ':', '!', '?', ')', ']'];
+
 /// The extensions of an image chip (bend_images' `has_image_ext`).
 pub const IMAGE_EXTS: &[&str] = &["png", "jpg", "jpeg", "gif", "webp"];
 

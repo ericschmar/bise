@@ -44,7 +44,23 @@ struct Fold<'a> {
     /// event-wake: the ids of bise's messages a `wake` entry already
     /// says (its `msg`): their msg-in line makes no entry
     woke: Vec<u64>,
+    /// inbox picks: the ids of the messages an answer's route line
+    /// already says (its `msg`): their msg-in line makes no entry
+    answered: Vec<u64>,
     ctx: &'a Ctx<'a>,
+}
+
+/// The newest message ids a fold keeps to drop their later msg-in (an
+/// answer's route line, inbox picks): the msg-in comes in the same step
+/// or the next lines, never far.
+const ANSWERED_MAX: usize = 64;
+
+/// `v` with `m` last, at most [`ANSWERED_MAX`] ids.
+fn bounded_push(v: &mut Vec<u64>, m: u64) {
+    v.push(m);
+    if v.len() > ANSWERED_MAX {
+        v.remove(0);
+    }
 }
 
 impl Fold<'_> {
@@ -514,6 +530,9 @@ impl Fold<'_> {
             // its words): the agent read it, the thread shows the entry
             Hub::MsgIn { from, id, .. }
                 if lines::is_hub_sender(&from) && id.strip_prefix("m_").and_then(|n| n.parse().ok()).is_some_and(|n: u64| self.woke.contains(&n)) => {}
+            // inbox picks: the message his answer became, which its route
+            // line already says (the "you answered" row)
+            Hub::MsgIn { id, .. } if id.strip_prefix("m_").and_then(|n| n.parse().ok()).is_some_and(|n: u64| self.answered.contains(&n)) => {}
             // G4: its message id; G5: an old direct reply (`@from`) was
             // written to him
             Hub::MsgIn { from, id, body } => {
@@ -644,7 +663,7 @@ impl Fold<'_> {
             // His answer as written, with his pasted files rendered in (R41,
             // designer m_14030 red a): the words fold, the images and files
             // ride apart, never a marker in the row
-            Hub::Route { who, card, said } => {
+            Hub::Route { who, card, said, msg, pick } => {
                 let a = (self.ctx.attached)(&said);
                 // with parts, the row's words are his words alone: no
                 // quote or paste tag in the head or its note
@@ -653,14 +672,40 @@ impl Fold<'_> {
                     true => a.words,
                     false => crate::parts::words(&parts).trim().to_string(),
                 };
+                // inbox picks: an option picked by its number reads as
+                // that option's words ('2' -> 'only at checkout')
+                let said_words = pick.unwrap_or(said_words);
                 let (text, note) = words::answered_split(&who, &said_words, self.ctx.width);
-                self.approval(pos, ms, true, text, note, Some(card));
+                // the asker's thread: the message his answer became came
+                // first (sb-core sends it, then writes this line). That
+                // from_agent entry becomes this row, at its pos (a client
+                // replaces it: same pos); the line first, its later
+                // msg-in makes no entry (architect m_22417, wake's rule)
+                if let Some(m) = msg {
+                    bounded_push(&mut self.answered, m);
+                }
+                let read = msg.and_then(|m| self.out.iter().rposition(|e| e.kind == EntryKind::FromAgent && e.msg == Some(m)));
+                let i = match read {
+                    Some(i) => {
+                        let mut e = Entry::new(self.out[i].pos, self.out[i].at_ms, EntryKind::Approval, text.clone());
+                        e.turn_start = self.out[i].turn_start;
+                        e.msg = msg;
+                        e.approval = Some(ApprovalFold { ok: true, text, note, card: Some(card) });
+                        self.out[i] = e;
+                        if self.cont == Some(i) {
+                            self.cont = None;
+                        }
+                        i
+                    }
+                    None => {
+                        self.approval(pos, ms, true, text, note, Some(card));
+                        self.out.len() - 1
+                    }
+                };
                 // his images and files ride in Entry.parts (msg-parts):
                 // the window draws the answer's chips from them
-                if let Some(e) = self.out.last_mut() {
-                    e.parts = parts;
-                }
-                self.route = self.out.len().checked_sub(1);
+                self.out[i].parts = parts;
+                self.route = Some(i);
             }
             // another agent's wake in main's thread (ambient-lead m_19783):
             // its typed `wake` line came first and took this message's
@@ -770,6 +815,7 @@ pub fn fold(lines: &[Line], ctx: &Ctx) -> Vec<Entry> {
         starting: false,
         by_result: Vec::new(),
         woke: Vec::new(),
+        answered: Vec::new(),
         ctx,
     };
     for (pos, ms, l) in lines {
@@ -866,3 +912,7 @@ mod tests;
 #[cfg(test)]
 #[path = "fold_page_tests.rs"]
 mod page_tests;
+
+#[cfg(test)]
+#[path = "fold_pick_tests.rs"]
+mod pick_tests;

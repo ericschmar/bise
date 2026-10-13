@@ -1436,13 +1436,142 @@ law answer_step_round:
   for dirty: Bool
   for view: J.Json
   for msg: Maybe<&2, Nat>
-  {LINK.AStep.of(LINK.answer_json(LINK.AStep{fx, dirty, view, msg})) == LINK.AStep{fx, dirty, view, msg} : LINK.Answer}
+  for ans_card: Maybe<&2, Nat>
+  for ans_who: Maybe<&2, String>
+  for ans_said: Maybe<&2, String>
+  for ans_ask: Maybe<&2, String>
+  for ans_pick: Maybe<&2, String>
+  {LINK.AStep.of(LINK.answer_json(LINK.AStep{fx, dirty, view, msg, ans_card, ans_who, ans_said, ans_ask, ans_pick})) == LINK.AStep{fx, dirty, view, msg, ans_card, ans_who, ans_said, ans_ask, ans_pick} : LINK.Answer}
 
-def answer_step_round(fx, dirty, view, msg):
-  match msg:
-    case None{}:
+def answer_step_round(fx, dirty, view, msg, ans_card, ans_who, ans_said, ans_ask, ans_pick):
+  match msg ans_card ans_who ans_said ans_ask ans_pick:
+    case None{} None{} None{} None{} None{} None{}:
       {==}
-    case Some{x_msg}:
+    case None{} None{} None{} None{} None{} Some{x_ans_pick}:
+      {==}
+    case None{} None{} None{} None{} Some{x_ans_ask} None{}:
+      {==}
+    case None{} None{} None{} None{} Some{x_ans_ask} Some{x_ans_pick}:
+      {==}
+    case None{} None{} None{} Some{x_ans_said} None{} None{}:
+      {==}
+    case None{} None{} None{} Some{x_ans_said} None{} Some{x_ans_pick}:
+      {==}
+    case None{} None{} None{} Some{x_ans_said} Some{x_ans_ask} None{}:
+      {==}
+    case None{} None{} None{} Some{x_ans_said} Some{x_ans_ask} Some{x_ans_pick}:
+      {==}
+    case None{} None{} Some{x_ans_who} None{} None{} None{}:
+      {==}
+    case None{} None{} Some{x_ans_who} None{} None{} Some{x_ans_pick}:
+      {==}
+    case None{} None{} Some{x_ans_who} None{} Some{x_ans_ask} None{}:
+      {==}
+    case None{} None{} Some{x_ans_who} None{} Some{x_ans_ask} Some{x_ans_pick}:
+      {==}
+    case None{} None{} Some{x_ans_who} Some{x_ans_said} None{} None{}:
+      {==}
+    case None{} None{} Some{x_ans_who} Some{x_ans_said} None{} Some{x_ans_pick}:
+      {==}
+    case None{} None{} Some{x_ans_who} Some{x_ans_said} Some{x_ans_ask} None{}:
+      {==}
+    case None{} None{} Some{x_ans_who} Some{x_ans_said} Some{x_ans_ask} Some{x_ans_pick}:
+      {==}
+    case None{} Some{x_ans_card} None{} None{} None{} None{}:
+      {==}
+    case None{} Some{x_ans_card} None{} None{} None{} Some{x_ans_pick}:
+      {==}
+    case None{} Some{x_ans_card} None{} None{} Some{x_ans_ask} None{}:
+      {==}
+    case None{} Some{x_ans_card} None{} None{} Some{x_ans_ask} Some{x_ans_pick}:
+      {==}
+    case None{} Some{x_ans_card} None{} Some{x_ans_said} None{} None{}:
+      {==}
+    case None{} Some{x_ans_card} None{} Some{x_ans_said} None{} Some{x_ans_pick}:
+      {==}
+    case None{} Some{x_ans_card} None{} Some{x_ans_said} Some{x_ans_ask} None{}:
+      {==}
+    case None{} Some{x_ans_card} None{} Some{x_ans_said} Some{x_ans_ask} Some{x_ans_pick}:
+      {==}
+    case None{} Some{x_ans_card} Some{x_ans_who} None{} None{} None{}:
+      {==}
+    case None{} Some{x_ans_card} Some{x_ans_who} None{} None{} Some{x_ans_pick}:
+      {==}
+    case None{} Some{x_ans_card} Some{x_ans_who} None{} Some{x_ans_ask} None{}:
+      {==}
+    case None{} Some{x_ans_card} Some{x_ans_who} None{} Some{x_ans_ask} Some{x_ans_pick}:
+      {==}
+    case None{} Some{x_ans_card} Some{x_ans_who} Some{x_ans_said} None{} None{}:
+      {==}
+    case None{} Some{x_ans_card} Some{x_ans_who} Some{x_ans_said} None{} Some{x_ans_pick}:
+      {==}
+    case None{} Some{x_ans_card} Some{x_ans_who} Some{x_ans_said} Some{x_ans_ask} None{}:
+      {==}
+    case None{} Some{x_ans_card} Some{x_ans_who} Some{x_ans_said} Some{x_ans_ask} Some{x_ans_pick}:
+      {==}
+    case Some{x_msg} None{} None{} None{} None{} None{}:
+      {==}
+    case Some{x_msg} None{} None{} None{} None{} Some{x_ans_pick}:
+      {==}
+    case Some{x_msg} None{} None{} None{} Some{x_ans_ask} None{}:
+      {==}
+    case Some{x_msg} None{} None{} None{} Some{x_ans_ask} Some{x_ans_pick}:
+      {==}
+    case Some{x_msg} None{} None{} Some{x_ans_said} None{} None{}:
+      {==}
+    case Some{x_msg} None{} None{} Some{x_ans_said} None{} Some{x_ans_pick}:
+      {==}
+    case Some{x_msg} None{} None{} Some{x_ans_said} Some{x_ans_ask} None{}:
+      {==}
+    case Some{x_msg} None{} None{} Some{x_ans_said} Some{x_ans_ask} Some{x_ans_pick}:
+      {==}
+    case Some{x_msg} None{} Some{x_ans_who} None{} None{} None{}:
+      {==}
+    case Some{x_msg} None{} Some{x_ans_who} None{} None{} Some{x_ans_pick}:
+      {==}
+    case Some{x_msg} None{} Some{x_ans_who} None{} Some{x_ans_ask} None{}:
+      {==}
+    case Some{x_msg} None{} Some{x_ans_who} None{} Some{x_ans_ask} Some{x_ans_pick}:
+      {==}
+    case Some{x_msg} None{} Some{x_ans_who} Some{x_ans_said} None{} None{}:
+      {==}
+    case Some{x_msg} None{} Some{x_ans_who} Some{x_ans_said} None{} Some{x_ans_pick}:
+      {==}
+    case Some{x_msg} None{} Some{x_ans_who} Some{x_ans_said} Some{x_ans_ask} None{}:
+      {==}
+    case Some{x_msg} None{} Some{x_ans_who} Some{x_ans_said} Some{x_ans_ask} Some{x_ans_pick}:
+      {==}
+    case Some{x_msg} Some{x_ans_card} None{} None{} None{} None{}:
+      {==}
+    case Some{x_msg} Some{x_ans_card} None{} None{} None{} Some{x_ans_pick}:
+      {==}
+    case Some{x_msg} Some{x_ans_card} None{} None{} Some{x_ans_ask} None{}:
+      {==}
+    case Some{x_msg} Some{x_ans_card} None{} None{} Some{x_ans_ask} Some{x_ans_pick}:
+      {==}
+    case Some{x_msg} Some{x_ans_card} None{} Some{x_ans_said} None{} None{}:
+      {==}
+    case Some{x_msg} Some{x_ans_card} None{} Some{x_ans_said} None{} Some{x_ans_pick}:
+      {==}
+    case Some{x_msg} Some{x_ans_card} None{} Some{x_ans_said} Some{x_ans_ask} None{}:
+      {==}
+    case Some{x_msg} Some{x_ans_card} None{} Some{x_ans_said} Some{x_ans_ask} Some{x_ans_pick}:
+      {==}
+    case Some{x_msg} Some{x_ans_card} Some{x_ans_who} None{} None{} None{}:
+      {==}
+    case Some{x_msg} Some{x_ans_card} Some{x_ans_who} None{} None{} Some{x_ans_pick}:
+      {==}
+    case Some{x_msg} Some{x_ans_card} Some{x_ans_who} None{} Some{x_ans_ask} None{}:
+      {==}
+    case Some{x_msg} Some{x_ans_card} Some{x_ans_who} None{} Some{x_ans_ask} Some{x_ans_pick}:
+      {==}
+    case Some{x_msg} Some{x_ans_card} Some{x_ans_who} Some{x_ans_said} None{} None{}:
+      {==}
+    case Some{x_msg} Some{x_ans_card} Some{x_ans_who} Some{x_ans_said} None{} Some{x_ans_pick}:
+      {==}
+    case Some{x_msg} Some{x_ans_card} Some{x_ans_who} Some{x_ans_said} Some{x_ans_ask} None{}:
+      {==}
+    case Some{x_msg} Some{x_ans_card} Some{x_ans_who} Some{x_ans_said} Some{x_ans_ask} Some{x_ans_pick}:
       {==}
 
 law answer_need_round:

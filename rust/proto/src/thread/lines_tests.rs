@@ -66,7 +66,7 @@ fn hub_lines_read_their_fields() {
     assert_eq!(h("approval : no : api : rm -rf : not that"), Hub::Approval { how: "no".into(), who: "api".into(), what: "rm -rf".into(), note: "not that".into() });
     assert_eq!(h("card-closed : #3 answered"), Hub::CardClosed { id: 3, res: "answered".into() });
     assert_eq!(h("card-closed : odd"), Hub::Other { kind: "card-closed".into(), text: "odd".into() });
-    assert_eq!(h("route : you → @docs (answer to card #4) : v2"), Hub::Route { who: "docs".into(), card: 4, said: "v2".into() });
+    assert_eq!(h("route : you → @docs (answer to card #4) : v2"), Hub::Route { who: "docs".into(), card: 4, said: "v2".into(), msg: None, pick: None });
     assert_eq!(h("pr : red : 412 : https://x/412 : checks fail \\: e2e"), Hub::Pr { state: crate::thread::PrNewsState::Failing, number: 412, url: "https://x/412".into(), text: "checks fail : e2e".into() });
     // no number: its text alone, an info line (thread::legacy)
     assert_eq!(h("pr : plain : x : u : hi"), Hub::Other { kind: "info".into(), text: "hi".into() });

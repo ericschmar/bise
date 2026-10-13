@@ -206,7 +206,7 @@ export class CoreProcess {
     let child: ChildProcessWithoutNullStreams;
     try {
       child = spawn(config.bise, coreArgs(config.workspace, this.opts.offscreen === true), {
-        env: childEnv(this.opts.env ?? process.env, this.opts.test === true),
+        env: childEnv(this.opts.env ?? process.env, this.opts.test === true, this.opts.offscreen === true),
         ...(config.workspace === '' ? {} : { cwd: config.workspace }),
         stdio: ['pipe', 'pipe', err],
       }) as ChildProcessWithoutNullStreams;

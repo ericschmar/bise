@@ -20,6 +20,8 @@ import ./xhub-model.bend as XH
 
 import ./xhub.bend as XB
 
+import ./picks.bend as PK
+
 # the seam, generated from bise_proto::core (issue 25): the inputs'
 # decode, the effects' encoders
 import ./gen/in.bend as GI
@@ -325,7 +327,8 @@ def route_parts(-o: M.St, +cx: X.Cx<o>, +parts: String) -> X.Cx<o>:
 # his route in main's feed (his answer to `who`'s card, or his words to
 # `who`), then its parts
 def route_line(-o: M.St, +cx: X.Cx<o>, +who: String, +card: Maybe<&2, Nat>, +said: String, +parts: String) -> X.Cx<o>:
-  route_parts(o, feed(o, cx, M.MAIN(), FD.route(who, card, said)), parts)
+  route_parts(o, feed(o, cx, M.MAIN(), FD.route(who, card, said, None{}, None{}, None{})), parts)
+
 
 def reply(-o: M.St, +cx: X.Cx<o>, +token: Nat, +body: J.Json) -> X.Cx<o>:
   out(o, cx, F.reply(token, body))
@@ -1896,15 +1899,38 @@ def close_card(-o: M.St, +cx: X.Cx<o>, +id: Nat, +res: String) -> X.Cx<o>:
   +cx2 = emit(o, cx, M.ECardClosed{id, res}, Unit{}, Unit{}, Unit{})
   feed(o, cx2, M.MAIN(), FD.card_closed(id, res))
 
+# one of the card's options (picks.bend); its laws read it here
+def is_option(+card: String, +t: String) -> Bool:
+  PK.is_option(card, t)
+
+# his answer `a` as its route line (inbox picks, architect m_22243): what
+# he said as he said it, `msg` the message it became (the asker's thread
+# folds it into this row), his pick when he picked an option by its number
+def answer_rec(+a: PK.Ans, +msg: Maybe<&2, Nat>) -> J.Json:
+  FD.route(PK.ans_who(a), Some{PK.ans_card(a)}, PK.ans_said(a), msg, PK.pick_n(PK.ans_pick(a)), PK.pick_words(PK.ans_pick(a)))
+
+# that route line in `agent`'s feed, then its parts; the step's answer
+# names the same answer (X.answered: inbox picks (3), architect m_22636)
+def answer_line(-o: M.St, +cx: X.Cx<o>, +agent: String, +who: String, +c: M.Card, +said: String, +parts: String, +msg: Maybe<&2, Nat>) -> X.Cx<o>:
+  +a = PK.ans(M.Card.id(c), M.Card.text(c), who, said)
+  +cx2 = feed(o, X.answered(o, cx, a), agent, answer_rec(a, msg))
+  pick_lazy(X.Cx<o>, String.is_empty(parts), u => cx2, u => feed(o, cx2, agent, FD.route_parts(parts_json(parts))))
+
+# the same line in the asker's own feed (inbox picks (2)): an agent's
+# card has it in both feeds, main's own in main's alone
+def asker_line(-o: M.St, +cx: X.Cx<o>, +asker: String, +c: M.Card, +said: String, +parts: String, +msg: Maybe<&2, Nat>) -> X.Cx<o>:
+  pick_lazy(X.Cx<o>, String.eq(asker, M.MAIN()), u => cx, u => answer_line(o, cx, asker, asker, c, said, parts, msg))
+
 def answer.q.sent(-o: M.St, p: X.Cx<o> & SendR, +c: M.Card, +asker: String, +text: String, +parts: String) -> X.Cx<o>:
   match p:
     case (+cx, SErr{+e}):
       notice(o, cx, e)
-    case (+cx, SOk{_}):
+    case (+cx, SOk{+m}):
       +id = M.Card.id(c)
+      +mid = M.Msg.id(m)
       +cx2 = note_main(o, cx, cat(["the user answered card #", ns(id), " (@", asker, " asked: \"", M.one_line(M.Card.text(c)), "\"): \"", M.one_line(text), "\""]))
-      +cx3 = route_line(o, cx2, asker, Some{id}, text, parts)
-      close_card(o, cx3, id, "answered")
+      +cx3 = answer_line(o, cx2, M.MAIN(), asker, c, text, parts, Some{mid})
+      close_card(o, asker_line(o, cx3, asker, c, text, parts, Some{mid}), id, "answered")
 
 # main's own card: the answer wakes main with a turn that holds it, like
 # a card for an agent reaches that agent (a main note would wait for the
@@ -1922,7 +1948,7 @@ def MAIN_ANSWER_HEAD() -> String:
 def answer.q.main(-o: M.St, +cx: X.Cx<o>, +c: M.Card, +text: String, +parts: String) -> X.Cx<o>:
   +id = M.Card.id(c)
   +cx2 = notify_main(o, cx, cat([MAIN_ANSWER_HEAD(), ns(id), " (\"", M.one_line(M.Card.text(c)), "\"): \"", M.one_line(text), "\""]))
-  +cx3 = route_line(o, cx2, M.MAIN(), Some{id}, text, parts)
+  +cx3 = answer_line(o, cx2, M.MAIN(), M.MAIN(), c, text, parts, None{})
   close_card(o, cx3, id, "answered")
 
 # his answer as a message to the asker, his parts with it
@@ -1972,32 +1998,6 @@ def card_kind(+k: String) -> CardK:
       Bool.pick(CardK, String.eq(k, "confirm"), KConfirm{},
         Bool.pick(CardK, M.choice_kind(k), KChoice{}, KOther{}))))
 
-def digits(cs: List<&2, Char>) -> Bool:
-  match cs:
-    case Nil{}:
-      True{}
-    case Con{+h, +t}:
-      Char.is_digit(h) && digits(t)
-
-# an option's number (`1`), not words
-def is_number(+t: String) -> Bool:
-  +s = String.trim(t)
-  Bool.pick(Bool, String.is_empty(s), False{}, digits(String.to_list(s)))
-
-def opt_line(+l: String, +n: String) -> Bool:
-  String.starts_with(l, String.append(n, ".")) || String.starts_with(l, String.append(n, ")"))
-
-def any_opt(xs: List<&2, String>, +n: String) -> Bool:
-  match xs:
-    case Nil{}:
-      False{}
-    case Con{+h, +t}:
-      opt_line(String.trim(h), n) || any_opt(t, n)
-
-# one of the card's options: a number with its line (`2.` or `2)`) in the
-# card's text
-def is_option(+card: String, +t: String) -> Bool:
-  is_number(t) && any_opt(String.lines(card), String.trim(t))
 
 # a deny alias (lead m_10900): `no` or `no: <why>`, any case, on the
 # lowered trimmed answer; it can only refuse (`nope`, `now` are words)
@@ -3296,13 +3296,13 @@ def Hub.r(x: Hub) -> X.R:
       r
 
 def hub_new(+workspace: String) -> Hub:
-  Hub{M.init(workspace), X.R{Nil{}, Nil{}, Nil{}, Nil{}, Nil{}, Nil{}, workspace, False{}, 0n, False{}, Nil{}, None{}}}
+  Hub{M.init(workspace), X.R{Nil{}, Nil{}, Nil{}, Nil{}, Nil{}, Nil{}, workspace, False{}, 0n, False{}, Nil{}, None{}, None{}}}
 
 # the context of one input over the hub
 def start(+h: Hub, +i: J.Json) -> X.Cx<Hub.d(h)>:
   +r = Hub.r(h)
-  +r2 = X.R.with_need(X.R.with_ans(X.R.with_git(X.R.with_now(X.R.with_dirty(r, False{}), C.get_nat(i, "now")), C.get_b(i, "git")),
-    Maybe.default(&2, List<&2, J.Json>, J.get_arr(i, "ans"), Nil{})), None{})
+  +r2 = X.R.with_answered(X.R.with_need(X.R.with_ans(X.R.with_git(X.R.with_now(X.R.with_dirty(r, False{}), C.get_nat(i, "now")), C.get_b(i, "git")),
+    Maybe.default(&2, List<&2, J.Json>, J.get_arr(i, "ans"), Nil{})), None{}), None{})
   X.Cx{X.core_start(Hub.d(h)), r2}
 
 def agent_decl(m: Maybe<&2, M.Agent>) -> Maybe<&2, M.Decl>:

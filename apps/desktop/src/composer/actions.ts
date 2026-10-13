@@ -29,6 +29,8 @@ export interface FieldBar {
   readonly fileList: boolean;
   readonly selected: boolean;
   readonly images: boolean;
+  /** chips in the draft: the key line says backspace on one removes it (composer-attachments A) */
+  readonly chips?: boolean;
   readonly typing: boolean;
   /** dictation: the mic on, then its last words coming */
   readonly dictating: 'recording' | 'transcribing' | null;

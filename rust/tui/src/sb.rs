@@ -1166,9 +1166,9 @@ pub(crate) fn hub_ev(h: Hub) -> Option<Ev> {
         // an answer to an item: the box's fold line (BISE-305, designer:
         // one sentence), `✓ you answered flow-prompts: oui`; its quotes,
         // pastes and images as parts, never tags (msg-parts)
-        Hub::Route { who, said, .. } => {
+        Hub::Route { who, said, pick, .. } => {
             let said = crate::said::Said::from(said);
-            let (text, note) = cards::answered(&who, said.words().trim());
+            let (text, note) = cards::answered(&who, &pick.unwrap_or_else(|| said.words().trim().to_string()));
             Ev::Approval { ok: true, text, note, parts: said.parts, asked: String::new(), open: false }
         }
         // pr-news (pr-design §4)

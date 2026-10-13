@@ -300,8 +300,8 @@ pub enum Hub {
     Approval { how: String, who: String, what: String, note: String },
     /// `card-closed : #3 answered`
     CardClosed { id: u64, res: String },
-    /// an answer to an item: `you → @{asker} (answer to card #{id}) : {text}`
-    Route { who: String, card: u64, said: String },
+    /// an answer to an item: `you → @{asker} (answer to card #{id}) : {text}`, `msg` the message it became, `pick` the option's words (inbox picks)
+    Route { who: String, card: u64, said: String, msg: Option<u64>, pick: Option<String> },
     /// pr-news: `pr : tone : number : url : text`
     Pr { state: crate::thread::PrNewsState, number: u64, url: String, text: String },
     /// `artifact : id : agent : title : kind : v`
@@ -756,7 +756,7 @@ pub fn view(f: Feed) -> Hub {
         Feed::Approval(r) => Hub::Approval { how: r.how, who: r.who, what: r.what, note: r.note },
         Feed::CardClosed(r) => Hub::CardClosed { id: r.id, res: r.res },
         Feed::Route(r) => match r.card {
-            Some(card) => Hub::Route { who: r.who, card, said: r.said },
+            Some(card) => Hub::Route { who: r.who, card, said: r.said, msg: r.msg, pick: r.pick },
             // his words to an agent: the line's text, as before
             None => other("route", format!("you → @{} : {}", r.who, r.said)),
         },

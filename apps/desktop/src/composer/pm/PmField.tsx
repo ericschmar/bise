@@ -90,6 +90,7 @@ import { useDictation } from "./dictation";
 import { fieldKey } from "./keys";
 import { clipboardText, dropInto, pasteInto, useDropAnywhere, type PasteCtx } from "./paste";
 import { Strip } from "./Strip";
+import { AttachList, QUOTE_SOURCE_EVENT } from "./AttachList";
 
 export interface PmFieldProps {
   readonly target: string;
@@ -157,6 +158,12 @@ export function PmField(p: PmFieldProps): JSX.Element {
   // a dictation node in the field: the placeholder hides, one line shows ('listening…' or his
   // words), never both on top of each other (his try a43609b2, ambient-lead m_19364)
   const [dictShown, setDictShown] = useState(false);
+  // the attachment list in the box (designer's composer-attachments A): the draft's chips, the one
+  // hovered (its row or its chip) and the one right before the caret; either lights both
+  const [chips, setChips] = useState<readonly Chip[]>([]);
+  const [hoverN, setHoverN] = useState<number | null>(null);
+  const [caretN, setCaretN] = useState<number | null>(null);
+  const litN = hoverN ?? caretN;
   // the editor's handlers read the latest closures through these (set after each render)
   const changed = useRef<(tr: Transaction | null) => void>(() => undefined);
   const keys = useRef<(e: KeyboardEvent) => boolean>(() => false);
@@ -567,16 +574,21 @@ export function PmField(p: PmFieldProps): JSX.Element {
   // ---- the strip above the box: the chips and the queue, re-drawn only when they change ----
   const lastStrip = useRef("");
   const note = useRef<string | null>(null);
+  const lastChips = useRef("[]");
   const pushStrip = (chips: readonly Chip[]): void => {
+    const ck = JSON.stringify(chips);
+    if (ck !== lastChips.current) {
+      lastChips.current = ck;
+      setChips(chips);
+    }
     const q = saved.current.queue;
     const n = note.current;
     const key = JSON.stringify([chips, q, n]);
     if (key === lastStrip.current) return;
     lastStrip.current = key;
     props.current.onStrip(
-      chips.length === 0 && q.length === 0 && n === null ? null : (
+      q.length === 0 && n === null ? null : (
         <Strip
-          chips={chips}
           queued={q.map((e) =>
             preview(buildMessage(entrySegments(e) ?? []).text, 48),
           )}
@@ -694,6 +706,9 @@ export function PmField(p: PmFieldProps): JSX.Element {
     if (st === null) return;
     const b = isBlank(st.doc);
     setDictShown(dictationAt(st.doc) !== null);
+    // the caret right after a chip lights its row (composer-attachments A)
+    const prev = st.selection.empty ? st.selection.$from.nodeBefore : null;
+    setCaretN(prev?.type.name === "chip" ? (prev.attrs.chip as Chip).n : null);
     // a failed take whose 'try again' line he deleted or sent: the core drops it
     if (tr === null || tr.docChanged) {
       dictation.sweep();
@@ -727,6 +742,7 @@ export function PmField(p: PmFieldProps): JSX.Element {
       selected: !st.selection.empty,
       typing: !b,
       images: segs.some((x) => x.kind === "chip" && x.chip.kind === "image"),
+      chips: segs.some((x) => x.kind === "chip" && x.chip.kind !== "artifact"),
     });
     const emojiTrigger = (text: string): Trigger | null => {
       const e = emojiToken(text);
@@ -795,6 +811,53 @@ export function PmField(p: PmFieldProps): JSX.Element {
     ctrlR.current = dictation.onCtrlR;
   });
 
+  // ---- the attachment list (AttachList.tsx): ✕ removes the chip, a click previews it ----
+  const removeChip = (n: number): void => {
+    const st = state();
+    if (st === null) return;
+    const at: { pos: number; size: number }[] = [];
+    st.doc.descendants((node, pos) => {
+      if (at.length === 0 && node.type.name === "chip" && (node.attrs.chip as Chip).n === n) at.push({ pos, size: node.nodeSize });
+      return at.length === 0;
+    });
+    const hit = at[0];
+    if (hit === undefined) return;
+    dispatch(st.tr.delete(hit.pos, hit.pos + hit.size));
+    setHoverN(null);
+  };
+  const openChip = (c: Chip): void => {
+    if (c.kind === "image" || c.kind === "file") {
+      void (window as Partial<Window>).bise?.quickLook(c.path);
+      return;
+    }
+    // a quote: the thread it came from scrolls to its words and flashes them (thread/ThreadScreen)
+    if (c.kind === "quote") window.dispatchEvent(new CustomEvent(QUOTE_SOURCE_EVENT, { detail: { from: c.from, text: c.text } }));
+  };
+  // a chip in the text hovered lights its row; the lit one (row, chip or caret) lights its chip
+  useEffect(() => {
+    const dom = view()?.dom;
+    if (dom === undefined) return;
+    const over = (e: MouseEvent): void => {
+      const chip = (e.target as Element).closest(".b-chip[data-n]");
+      setHoverN(chip instanceof HTMLElement ? Number(chip.dataset.n) : null);
+    };
+    const leave = (): void => {
+      setHoverN(null);
+    };
+    dom.addEventListener("mouseover", over);
+    dom.addEventListener("mouseleave", leave);
+    return () => {
+      dom.removeEventListener("mouseover", over);
+      dom.removeEventListener("mouseleave", leave);
+    };
+  }, []);
+  useEffect(() => {
+    const dom = view()?.dom;
+    if (dom === undefined) return;
+    // the caret after a chip lights its row only; a hover lights both (the chip keeps no fill at rest)
+    for (const el of dom.querySelectorAll<HTMLElement>(".b-chip[data-n]")) el.classList.toggle("lit", hoverN !== null && el.dataset.n === String(hoverN));
+  }, [hoverN, chips]);
+
   // ---- the turn ended: the oldest queued message leaves (queue.rs) ----
   const wasBusy = useRef(p.busy);
   useEffect(() => {
@@ -813,6 +876,15 @@ export function PmField(p: PmFieldProps): JSX.Element {
 
   return (
     <>
+      <AttachList
+        chips={chips}
+        lit={litN}
+        onLit={setHoverN}
+        onRemove={removeChip}
+        onOpen={openChip}
+        home={(window as Partial<Window>).bise?.home ?? ""}
+        testId={p.testId}
+      />
       <div ref={host} className="b-field-host" />
       {blank && !dictShown && (
         <span className="ph b-field-ph">{p.placeholder}</span>

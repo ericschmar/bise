@@ -303,7 +303,7 @@ function Privacy({ prefs, setPref, tg }: { prefs: Prefs | null; setPref: (key: s
           ...knownApps(prefs).map((id) => ({
             id,
             label: appName(prefs, id),
-            sub: id,
+            sub: <span className="settings-app-id">{id}</span>,
             control: (
               <Toggle
                 on={apps.includes(id)}

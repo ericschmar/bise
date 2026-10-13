@@ -144,6 +144,8 @@ pub const OWN_RESULTS: &[(&str, &str)] = &[
     ("project/resume", "CommandRunResult"),
     // A1 (architect m_21450): his message's id, for his pending row
     ("turn/send", "SendResult"),
+    // inbox picks (3) (architect m_22636): his answer as sb-core wrote it
+    ("card/answer", "AnswerResult"),
 ];
 
 /// A command whose method answers the hub's words ([`CommandRunResult`]):
@@ -407,6 +409,51 @@ pub struct CommandRunResult {
 pub struct SendResult {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub msg_id: Option<u64>,
+}
+
+/// `card/answer`'s result (inbox picks (3), architect m_22636): his answer
+/// as sb-core wrote its route line in the step that closed the card
+/// (`AStep.ans_*`): `agent` who asked, `question` the card's text, `said`
+/// what he said, `pick` the option's words when he picked one by its
+/// number. `notice`, `note`: the words of 'you answered' for that answer
+/// (`words::answered_split`, the thread row's). `answer` absent (`{}`)
+/// from an older hub or an answer a page took: the window keeps its own
+/// words.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+pub struct AnswerResult {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub answer: Option<CardAnswer>,
+}
+
+/// His answer to a card, as sb-core wrote its route line ([`AnswerResult`]).
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+pub struct CardAnswer {
+    #[serde(default)]
+    pub agent: String,
+    #[serde(default)]
+    pub question: String,
+    #[serde(default)]
+    pub said: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pick: Option<String>,
+    #[serde(default)]
+    pub notice: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub note: String,
+}
+
+impl CardAnswer {
+    /// A step's answer to a card, copied as is; none when the step
+    /// answered no card (an older sb-core's step too).
+    pub fn of_step(s: &crate::core::link::AStep) -> Option<CardAnswer> {
+        let (agent, question, said) = (s.ans_who.clone()?, s.ans_ask.clone()?, s.ans_said.clone()?);
+        s.ans_card?;
+        let words = s.ans_pick.clone().unwrap_or_else(|| said.clone());
+        let (notice, note) = crate::thread::words::answered_split(&agent, &words, &|w: &str| w.chars().count());
+        Some(CardAnswer { agent, question, said, pick: s.ans_pick.clone(), notice, note })
+    }
 }
 
 // ---- initialize ----

@@ -60,8 +60,10 @@ test("thread/paste-image: ⌘V of a PNG in bise main's composer is a chip, ⏎ s
     const chip = page.locator('[data-testid^="composer.chip."][data-kind="image"]');
     await expect(chip, 'the pasted PNG is an image chip').toHaveCount(1, { timeout: 5000 });
     expect(await chip.locator('img').first().evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth > 0), 'its thumbnail is drawn').toBe(true);
-    // the sent bubble's chip (designer m_18135): 'image 1' in ink, 1 px line, r 9, no fill, never the accent
-    await expect(chip).toHaveText('image 1');
+    // in the text the chip says its number beside its thumbnail; its name is the attachment list's row
+    // (designer's composer-attachments A); ink, 1 px line, r 9, no fill, never the accent
+    await expect(chip).toHaveText('1');
+    await expect(page.getByTestId('composer.attach.1'), 'its row in the box').toBeVisible();
     const look = await chip.evaluate((el) => {
       const cs = getComputedStyle(el);
       const probe = (v: string): string => {
@@ -111,9 +113,12 @@ test("thread/paste-image: ⌘V of a PNG in bise main's composer is a chip, ⏎ s
     expect(path.isAbsolute(f), f).toBe(true);
     expect(f, "in the image store, the TUI's").toMatch(/\/images\/[0-9a-f]{64}\.png$/u);
     expect(readFileSync(f).equals(readFileSync(PNG_FILE)), `${f} holds the PNG's bytes`).toBe(true);
+    // positional quotes (8ed6bf27, architect m_22341): no text beside parts, the hub renders
+    // the model's text from them; the label, one space, his words are the parts above
+    // (qa-native's R41 read: never '[Image #1]what…')
     const text = typeof sent['text'] === 'string' ? sent['text'] : '';
-    expect(text, "the label, one space, his words (qa-native's R41 read: never '[Image #1]what…')").toBe('[Image #1] what is wrong in this');
-    expect(text, 'no path in his words').not.toContain(f);
+    expect(text, `no text beside parts: ${JSON.stringify(sent)}`).toBe('');
+    expect(JSON.stringify(parts.filter((p) => p['kind'] === 'text')), 'no path in his words').not.toContain(f);
   } finally {
     await s.close();
   }

@@ -118,6 +118,11 @@ fn desktop_ts() -> String {
         }
         s.push_str("] as const;\n");
     }
+    s.push_str("\n/** a voice-fake test knob the core also gets in an off-screen run, never the terminal shells (Var::offscreen_core) */\nexport const OFFSCREEN_CORE_VARS = [\n");
+    for v in VARS.iter().filter(|v| v.offscreen_core) {
+        s.push_str(&format!("  '{}',\n", v.name));
+    }
+    s.push_str("] as const;\n");
     s
 }
 
@@ -212,4 +217,15 @@ fn the_test_home_keeps_only_the_test_runs_inputs() {
         assert!(!kept_in_tests(n), "{n}");
     }
     assert!(VARS.iter().filter(|v| v.kept_in_tests).all(|v| v.kind == Kind::Test));
+}
+
+/// architect m_22561: an off-screen desktop app hands its core exactly the
+/// three voice-fake knobs outside test mode (childenv.ts reads the flag from
+/// env_vars.gen.ts), all three test settings; the core's voice_of stays the
+/// guard against the real mic.
+#[test]
+fn only_the_voice_fake_knobs_reach_an_off_screen_core() {
+    let flagged: Vec<&str> = VARS.iter().filter(|v| v.offscreen_core).map(|v| v.name).collect();
+    assert_eq!(flagged, ["BISE_AMBIENT_FAKE_VOICE", "BISE_VOICE_FAKE_HEARD", "BISE_VOICE_FAKE_HEARD_MS"]);
+    assert!(VARS.iter().filter(|v| v.offscreen_core).all(|v| v.kind == Kind::Test && !v.kept_in_tests));
 }

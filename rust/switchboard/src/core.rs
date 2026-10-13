@@ -1125,11 +1125,9 @@ pub struct Hub {
     /// Drop confirmations pending on a client: id -> (client, task).
     confirms: BTreeMap<u64, (ClientId, String)>,
     next_confirm: u64,
-    /// (time, text) of recent assistant messages, for direct-exchange
-    /// excerpts.
+    /// (time, text) of recent assistant messages, for direct-exchange excerpts.
     recent: BTreeMap<String, VecDeque<(u64, String)>>,
-    /// The agents' contexts, rebuilt where their inputs changed
-    /// (contexts.rs).
+    /// The agents' contexts, rebuilt where their inputs changed (contexts.rs).
     contexts: crate::contexts::Contexts,
     /// The snapshot's agent rows, rebuilt where their inputs changed
     /// (snapshot_rows.rs).
@@ -1196,10 +1194,11 @@ pub struct Hub {
     revive: Option<Revive>,
     /// Lines for main's feed from a revival, out at the next input.
     revived: Vec<String>,
-    /// A1: his message's id from a step's answer (`msg`), for `turn/send`
+    /// From a step's answer: his message's id (A1, `msg`) for `turn/send`;
+    /// his answer to a card (inbox picks (3), `ans_*`) for `card/answer`
     pub said: Option<u64>,
-    /// Who asked for the interrupt sb-core is deciding on (the user, an
-    /// agent); none: the hub's own (`Effect::Interrupt::by`).
+    pub answered: Option<bise_proto::rpc::CardAnswer>,
+    /// Who asked for sb-core's interrupt; none: the hub's (`Effect::Interrupt::by`).
     interrupt_by: Option<String>,
     /// Issue #4, set by the daemon from the choice files: each agent's
     /// model for `sb list`, `sb tasks` and the roster.
@@ -1376,6 +1375,7 @@ impl Hub {
             revive: None,
             revived: Vec::new(),
             said: None,
+            answered: None,
             interrupt_by: None,
             models: BTreeMap::new(),
             model_trial: BTreeSet::new(),

@@ -113,3 +113,20 @@ export type CommandRunResult = { notice?: string | null, };
  * hub): match by the words, as before.
  */
 export type SendResult = { msg_id?: number | null, };
+
+/**
+ * His answer to a card, as sb-core wrote its route line ([`AnswerResult`]).
+ */
+export type CardAnswer = { agent: string, question: string, said: string, pick?: string | null, notice: string, note?: string, };
+
+/**
+ * `card/answer`'s result (inbox picks (3), architect m_22636): his answer
+ * as sb-core wrote its route line in the step that closed the card
+ * (`AStep.ans_*`): `agent` who asked, `question` the card's text, `said`
+ * what he said, `pick` the option's words when he picked one by its
+ * number. `notice`, `note`: the words of 'you answered' for that answer
+ * (`words::answered_split`, the thread row's). `answer` absent (`{}`)
+ * from an older hub or an answer a page took: the window keeps its own
+ * words.
+ */
+export type AnswerResult = { answer?: CardAnswer | null, };

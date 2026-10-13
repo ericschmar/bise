@@ -35,3 +35,5 @@
 .settings-approvals { outline: none; }
 /* a rule's remove asking inline (V8) */
 .settings-ask { color: var(--c-accent); font-size: var(--t-13); }
+/* a never-sent app's bundle id is machine text: mono, text-3 (designer m_22582) */
+.settings-app-id { font-family: var(--font-mono); color: var(--c-text-3); }

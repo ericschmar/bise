@@ -81,6 +81,8 @@ impl Hub {
         }
         // his message's id, typed by sb-core (A1): the first one counts
         self.said = self.said.or(s.msg);
+        // his answer to a card, typed by sb-core (inbox picks (3))
+        self.answered = self.answered.take().or_else(|| bise_proto::rpc::CardAnswer::of_step(&s));
         // the state after the step first: the deliveries render from it
         self.load_view(&s.view);
         for f in s.fx {

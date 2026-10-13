@@ -75,7 +75,7 @@ test('composer/quote: select an answer in the real thread, type: a quote chip at
       return r.toString().trim() === '';
     }, T.chipQuote);
     expect(chipFirst, 'the chip sits at the caret, before the words typed after it').toBe(true);
-    await expect(page.locator(T.strip), 'its strip row names where it comes from, main as bise').toContainText('bise · ');
+    await expect(page.getByTestId('composer.attach.1'), 'its row in the box names where it comes from, main as bise').toContainText('bise · ');
     expect(await page.locator(T.field).evaluate(fieldText)).toContain('pourquoi 03:00 ?');
   } finally {
     await s.close();

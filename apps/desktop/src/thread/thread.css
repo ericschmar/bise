@@ -2022,3 +2022,14 @@
 }
 /* scrolling moves only the thread (his feedback main m_21487, designer m_21505 (2)): the composer and
    its keys line keep their place and height whether he reads up or sits at the end */
+/* a quote's source, from the composer's attachment list: a short tint, then gone (no motion when reduced) */
+.th-flash {
+  animation: th-flash 1.2s var(--ease-out, ease-out);
+}
+@keyframes th-flash {
+  0%, 30% { background: var(--c-selection); }
+  100% { background: transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .th-flash { animation: none; outline: 1px solid var(--c-line-strong); }
+}

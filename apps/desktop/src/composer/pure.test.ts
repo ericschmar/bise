@@ -5,6 +5,7 @@ import { emojiToken, filterEmoji, get, typedEmoji, all as allEmoji, EMOJI_MAX } 
 import { agoWords, artifactRows, emojiRows } from './pick';
 import TUI_EMOJI from '../../../../rust/tui/src/emoji.tsv?raw';
 import DESKTOP_EMOJI from './emoji.tsv?raw';
+import COMPOSER_PARTS from '../../../../rust/proto/fixtures/composer_parts.json';
 import { barMode, barPairs, startTip, tickTip, tipShown, TIPS, TIP_EVERY_MS } from './keybar';
 import { noVisionLine } from './message';
 import { isDocPath, isImagePath } from './sources';
@@ -47,6 +48,11 @@ describe('triggers (the TUI rules)', () => {
 });
 
 describe('the send', () => {
+  it('one typed message, the same parts from both composers (architect m_22426: the TUI runs the same fixture)', () => {
+    const cases = COMPOSER_PARTS as unknown as { name: string; window: Segment[]; parts: unknown[] }[];
+    for (const c of cases) expect(buildMessage(c.window).parts, c.name).toEqual(c.parts);
+  });
+
   it("his m_22231: 'regarding [Image #1] and [Image #2] and ❝ 3' keeps its order in the parts", () => {
     const out = buildMessage([
       { kind: 'text', text: 'regarding ' },

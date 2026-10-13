@@ -4,7 +4,7 @@
 // hands its children nothing of that agent.
 import { describe, expect, it } from 'vitest';
 import { childEnv, inherits } from './childenv';
-import { INTERNAL_VARS, TEST_VARS } from './env_vars.gen';
+import { INTERNAL_VARS, OFFSCREEN_CORE_VARS, TEST_VARS } from './env_vars.gen';
 
 /** An agent's shell: every internal and test name set, plus his own settings. */
 function agentShell(): Record<string, string> {
@@ -48,6 +48,26 @@ describe('childEnv', () => {
     // the old prefix list dropped BISE_AGENT* and SB_*: his agents' model and his build dir are his
     expect(inherits('BISE_AGENT_MODEL', false)).toBe(true);
     expect(inherits('SB_BUILD_DIR', false)).toBe(true);
+  });
+
+  it("an off-screen core outside test mode gets the voice fake's knobs, and only those; a shell never does (architect m_22561)", () => {
+    expect([...OFFSCREEN_CORE_VARS]).toEqual(['BISE_AMBIENT_FAKE_VOICE', 'BISE_VOICE_FAKE_HEARD', 'BISE_VOICE_FAKE_HEARD_MS']);
+    for (const k of OFFSCREEN_CORE_VARS) expect(TEST_VARS as readonly string[], k).toContain(k);
+    // the off-screen core (core/process.ts): his settings plus the three knobs, no other test or internal name
+    const core = childEnv(agentShell(), false, true);
+    expect(core).toEqual({ ...HIS, BISE_AMBIENT_FAKE_VOICE: 'junk', BISE_VOICE_FAKE_HEARD: 'junk', BISE_VOICE_FAKE_HEARD_MS: 'junk' });
+    // the terminal shells (term/host.ts) never pass the flag: on- or off-screen, none of them
+    for (const k of OFFSCREEN_CORE_VARS) expect(childEnv(agentShell(), false), k).not.toHaveProperty(k);
+    // on-screen outside test mode: neither child gets them
+    for (const k of OFFSCREEN_CORE_VARS) expect(inherits(k, false, false), k).toBe(false);
+  });
+
+  it('the terminal shells are started without the off-screen core flag (only core/process.ts sets it)', async () => {
+    const { readFileSync } = await import('node:fs');
+    const host = readFileSync(new URL('./term/host.ts', import.meta.url), 'utf8');
+    expect(host).toMatch(/childEnv\(process\.env, this\.testMode\)/);
+    const proc = readFileSync(new URL('./core/process.ts', import.meta.url), 'utf8');
+    expect(proc).toMatch(/childEnv\([^)]*, this\.opts\.offscreen === true\)/);
   });
 
   it('an unset value is not written', () => {

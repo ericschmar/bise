@@ -5,3 +5,5 @@
 
 export const IMAGE_EXTS = ["png", "jpg", "jpeg", "gif", "webp"] as const;
 export const DOC_EXTS = ["pdf", "csv", "tsv", "xls", "xlsx", "xlsm", "doc", "docx", "ppt", "pptx", "key", "numbers", "pages", "odt", "ods", "odp", "rtf", "epub"] as const;
+// the marks that take no space after a chip ('❝ 1, which?')
+export const NO_SPACE_BEFORE = [".", ",", ";", ":", "!", "?", ")", "]"] as const;

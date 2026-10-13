@@ -59,16 +59,20 @@ fn an_off_screen_run_never_opens_the_real_mic() {
     assert_eq!(voice_of(Ok(None), true), Voice::NoMic);
     assert_eq!(voice_of(Err("refused".into()), true), Voice::NoMic);
     // BISE_HOME a symlink to his ~/.bise: the fake is refused (canonical
-    // paths), so an off-screen run gets no mic, not his
-    let d = temp_dir();
-    let his = d.join("home");
-    std::fs::create_dir_all(his.join(".bise")).unwrap();
-    let link = d.join("link");
-    std::os::unix::fs::symlink(his.join(".bise"), &link).unwrap();
-    let env = [("BISE_HOME", link.to_string_lossy().into_owned()), ("HOME", his.to_string_lossy().into_owned())];
-    let get = |k: &str| env.iter().find(|(n, _)| *n == k).map(|(_, v)| v.clone());
-    let fake = crate::ambient::fake::words_file(Some(f.to_string_lossy().into_owned()), &get);
+    // paths), so an off-screen run gets no mic, not his. His paths with a
+    // resolver table, not a real link in the temp dir: a gate's temp dir
+    // is under ~/.bise/gate, a home the rule allows (amb-feed m_22626).
+    let env = [("BISE_HOME", "/Users/g/link"), ("HOME", "/Users/g")];
+    let get = |k: &str| env.iter().find(|(n, _)| *n == k).map(|(_, v)| v.to_string());
+    let canon = |p: &Path| if p == Path::new("/Users/g/link") { PathBuf::from("/Users/g/.bise") } else { p.to_path_buf() };
+    let fake = crate::ambient::fake::words_file_in(Some(f.to_string_lossy().into_owned()), &get, &canon);
     assert!(fake.is_err(), "{fake:?}");
     assert_eq!(voice_of(fake, true), Voice::NoMic);
+    // the same link resolved by the file system, wherever the test runs:
+    // the link is followed (a link to a home outside any gate is refused)
+    let d = temp_dir();
+    std::fs::create_dir_all(d.join("home/.bise")).unwrap();
+    std::os::unix::fs::symlink(d.join("home/.bise"), d.join("link")).unwrap();
+    assert_eq!(std::fs::canonicalize(d.join("link")).unwrap(), std::fs::canonicalize(d.join("home/.bise")).unwrap());
     let _ = std::fs::remove_dir_all(d);
 }

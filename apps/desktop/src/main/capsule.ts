@@ -15,6 +15,7 @@
 // only change its state and print CAPSULE_LINE on stdout.
 import { BrowserWindow, ipcMain, screen, type Tray } from 'electron';
 import { CAPSULE_LINE, IPC, type CapsuleAt, type CapsuleFit, type CapsuleState } from '../shared/api';
+import { appendCapsuleFrame, capsuleFrame } from './capsuleframe';
 import { glassOf } from './glass';
 import { capsuleBounds, fitBounds, OFF_DISPLAY, pinnedBounds, pinOf, type Anchor, type DisplayBox, type Pin, type Rect } from './place';
 import { loadRenderer, OFF, webPreferences } from './windows';
@@ -38,10 +39,17 @@ export class Capsule {
   private fading: ReturnType<typeof setInterval> | null = null;
   tray: Tray | null = null;
 
-  /** `offscreen`: BISE_DESKTOP_OFFSCREEN (offscreen.ts): placed off every display, never shown */
+  /** off-screen: where this show would sit on his display (capsuleframe.ts), pinned like the real one */
+  private would: { pin: Pin; d: DisplayBox } | null = null;
+
+  /**
+   * `offscreen`: BISE_DESKTOP_OFFSCREEN (offscreen.ts): placed off every display, never shown.
+   * `framesDir`: off-screen, where each show and move is recorded (capsuleFramesDir); null records none.
+   */
   constructor(
     private readonly testMode: boolean,
     private readonly offscreen = false,
+    private readonly framesDir: string | null = null,
   ) {
     const mac = process.platform === 'darwin';
     const glass = glassOf('capsule', process.platform, testMode);
@@ -88,6 +96,7 @@ export class Capsule {
     this.state = { shown: true, at, keys, why };
     // placed (and kept inside the screen) once, here; then pinned
     this.pin = null;
+    this.would = null;
     this.fit = at === 'bottom' ? fit : null;
     this.stopFade();
     this.place();
@@ -109,6 +118,7 @@ export class Capsule {
     const corner = this.state.at === 'corner';
     this.state = { ...this.state, shown: false, keys: false, why };
     this.pin = null;
+    this.would = null;
     if (this.testMode) process.stdout.write(`${CAPSULE_LINE} hide\n`);
     else if (corner && !this.offscreen) this.fadeOut();
     else this.win.hide();
@@ -156,7 +166,11 @@ export class Capsule {
   }
 
   private display(): DisplayBox {
-    if (this.testMode || this.offscreen) return OFF_DISPLAY;
+    return this.testMode || this.offscreen ? OFF_DISPLAY : this.realDisplay();
+  }
+
+  /** the display under his cursor (the tray's for the menu): only read, nothing goes there off-screen */
+  private realDisplay(): DisplayBox {
     const d = this.state.at === 'menu' && this.tray !== null ? screen.getDisplayMatching(this.tray.getBounds()) : screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
     return { bounds: d.bounds, workArea: d.workArea };
   }
@@ -175,14 +189,33 @@ export class Capsule {
   private place(): void {
     if (this.pin !== null) {
       this.win.setBounds(pinnedBounds(this.size, this.pin, this.glass));
-      return;
+    } else {
+      const b = this.boundsOn(this.display());
+      this.win.setBounds(b);
+      if (this.state.shown) this.pin = this.pinAt(b);
     }
-    const anchor = this.anchor();
+    this.record();
+  }
+
+  /** where a show puts the window on `d` */
+  private boundsOn(d: DisplayBox): Rect {
     const fit = this.fit;
-    const b = fit !== null ? fitBounds(this.size, this.display(), this.glass, fit.maxHeight) : capsuleBounds(this.size, this.display(), anchor, this.glass);
-    this.win.setBounds(b);
-    // a fit view keeps its top-left (it grows down), the others their anchored edge
-    if (this.state.shown) this.pin = pinOf(b, this.size, fit !== null ? { at: 'top' } : anchor, this.glass);
+    return fit !== null ? fitBounds(this.size, d, this.glass, fit.maxHeight) : capsuleBounds(this.size, d, this.anchor(), this.glass);
+  }
+
+  /** a fit view keeps its top-left (it grows down), the others their anchored edge */
+  private pinAt(b: Rect): Pin {
+    return pinOf(b, this.size, this.fit !== null ? { at: 'top' } : this.anchor(), this.glass);
+  }
+
+  /** off-screen, shown: where it would sit on his display, appended to framesDir (capsuleframe.ts) */
+  private record(): void {
+    if (this.framesDir === null || !this.state.shown) return;
+    const w = this.would;
+    const d = w?.d ?? this.realDisplay();
+    const b = w !== null ? pinnedBounds(this.size, w.pin, this.glass) : this.boundsOn(d);
+    if (w === null) this.would = { pin: this.pinAt(b), d };
+    appendCapsuleFrame(this.framesDir, capsuleFrame(Date.now(), w === null ? 'show' : 'move', this.state.at, b, d, this.win.getBounds()));
   }
 
   private tell(): void {

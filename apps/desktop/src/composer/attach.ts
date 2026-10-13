@@ -32,6 +32,18 @@ export async function fileIconOf(path: string): Promise<string | null> {
 }
 
 /** A small thumbnail of an image as a data URL (48 px on its long side); null when it doesn't decode. */
+/** An image's pixels (the attachment list's row says '1200×630'), null when it can't be read. */
+export async function imageDims(f: File): Promise<{ w: number; h: number } | null> {
+  try {
+    const bmp = await createImageBitmap(f);
+    const d = { w: bmp.width, h: bmp.height };
+    bmp.close();
+    return d;
+  } catch {
+    return null;
+  }
+}
+
 export async function thumbnail(f: File, side = 48): Promise<string | null> {
   try {
     const bmp = await createImageBitmap(f);

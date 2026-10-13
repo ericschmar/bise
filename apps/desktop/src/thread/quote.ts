@@ -42,3 +42,23 @@ export function quoteFrom(rowKind: string | null | undefined, rowFrom: string | 
 export function quoteText(selected: string): string {
   return selected.replace(/\s+$/u, '').trim() === '' ? '' : selected.replace(/\n+$/u, '');
 }
+
+/** The entry a quote came from: the newest whose text holds the quote's first words (whitespace
+ *  folded); null when it isn't in the pages held. The attachment list's quote row scrolls to it. */
+export function quoteSourcePos(
+  store: { threadOrder(key: string): { readonly order: readonly number[] }; entry(key: string, pos: number): { readonly text: string } | undefined },
+  key: string,
+  quote: string,
+): number | null {
+  const fold = (s: string): string => s.replace(/\s+/gu, ' ').trim();
+  const head = fold(quote).slice(0, 80);
+  if (head === '') return null;
+  const order = store.threadOrder(key).order;
+  for (let i = order.length - 1; i >= 0; i -= 1) {
+    const pos = order[i];
+    if (pos === undefined) continue;
+    const e = store.entry(key, pos);
+    if (e !== undefined && fold(e.text).includes(head)) return pos;
+  }
+  return null;
+}

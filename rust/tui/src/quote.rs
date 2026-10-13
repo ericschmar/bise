@@ -759,4 +759,20 @@ mod tests {
         assert!(of(&app.attachments[0]).unwrap().text.contains("number"), "{:?}", app.attachments);
         assert!(!frame_text(&mut app, 100, 30).iter().any(|r| r.contains("ask about it ·")));
     }
+
+    /// One typed message, the same parts from both composers (architect
+    /// m_22426): the shared fixture's TUI text through expand gives its
+    /// parts; the window's vitest runs its segments through buildMessage
+    /// (composer/pure.test.ts).
+    #[test]
+    fn both_composers_give_the_same_parts() {
+        let cases: Vec<serde_json::Value> = serde_json::from_str(include_str!("../../proto/fixtures/composer_parts.json")).unwrap();
+        for c in cases {
+            let mut app = crate::sb::bench::test_app();
+            app.attachments.push(Attachment { label: label(1), marker: tag("main", "q"), info: Default::default() });
+            let said = crate::attach::expand(&mut app, c["tui"].as_str().unwrap());
+            let want: Vec<bise_proto::parts::Part> = serde_json::from_value(c["parts"].clone()).unwrap();
+            assert_eq!(said.parts, want, "{}", c["name"]);
+        }
+    }
 }

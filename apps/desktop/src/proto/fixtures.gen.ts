@@ -8,7 +8,7 @@ import type { AppCmd, CoreEv, DraftHubCmd, ProjectView } from './draft';
 import type { HelperCmd, HelperEv } from './helper';
 import type { HubCmd, HubEv } from './hub';
 import type { PtyCmd, PtyEv } from './pty';
-import type { CommandRunResult, SendResult } from './rpc';
+import type { AnswerResult, CommandRunResult, SendResult } from './rpc';
 
 /** rust/proto/fixtures/hub_ev.jsonl */
 export const hub_ev: readonly HubEv[] = [
@@ -390,5 +390,12 @@ export const command_run_result: readonly CommandRunResult[] = [
 /** rust/proto/fixtures/send_result.jsonl */
 export const send_result: readonly SendResult[] = [
   {"msg_id":7},
+  {},
+];
+
+/** rust/proto/fixtures/answer_result.jsonl */
+export const answer_result: readonly AnswerResult[] = [
+  {"answer":{"agent":"docs","notice":"you answered docs: only at checkout","pick":"only at checkout","question":"where does the balance show?\n1. at every step\n2. only at checkout","said":"2"}},
+  {"answer":{"agent":"main","note":"not yet, the release notes first please","notice":"you answered main","question":"merge?","said":"not yet, the release notes first please"}},
   {},
 ];

@@ -153,6 +153,82 @@
   font: var(--t-12) var(--font-mono);
   color: var(--c-text-3);
 }
+/* the attachment list in the box, above his words (designer's composer-attachments A): 28 px rows
+   number · sign · name · facts · ✕ on hover, aligned in columns like the terminal's; 4 rows, then it
+   scrolls; a rule under it; the name cuts first, the facts stay */
+.b-composer .b-attach {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(4 * var(--h-row-tight));
+  overflow-y: auto;
+  margin: 0 0 var(--s-2);
+  padding-bottom: var(--s-1);
+  border-bottom: 1px solid var(--c-line);
+}
+.b-composer .b-attach-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  flex: none;
+  height: var(--h-row-tight);
+  padding: 0 var(--s-1);
+  border-radius: var(--r-2);
+  font: var(--t-13) / 1 var(--font-ui);
+  color: var(--c-text);
+  cursor: default;
+}
+.b-composer .b-attach-row.lit {
+  background: var(--c-hover);
+}
+.b-composer .b-attach-row .n {
+  flex: none;
+  min-width: 1ch;
+  font: var(--t-12) / 1 var(--font-mono);
+  color: var(--c-text-3);
+}
+.b-composer .b-attach-row .sg {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: var(--c-text-2);
+}
+.b-composer .b-attach-row .sg.th {
+  border-radius: 3px;
+  object-fit: cover;
+}
+.b-composer .b-attach-row .nm {
+  flex: 0 100 auto;
+  min-width: 8ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* the facts give way only once the name is down to its first letters (a long folder path) */
+.b-composer .b-attach-row .in3 {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--c-text-3);
+  white-space: nowrap;
+}
+.b-composer .b-attach-row .x {
+  flex: none;
+  margin-left: auto;
+  visibility: hidden;
+}
+.b-composer .b-attach-row.lit .x,
+.b-composer .b-attach-row:hover .x {
+  visibility: visible;
+}
+/* a chip lit by its row, a hover or the caret after it */
+.b-composer .b-chip.lit {
+  border-color: var(--c-text-3);
+  background: var(--c-hover);
+}
 .b-composer-strip .k {
   margin-left: var(--gap-inline);
 }
@@ -201,9 +277,13 @@
 .b-composer .keys .kk {
   color: var(--c-text-2);
 }
+/* a tip shows whole or not at all (designer m_22673): with no room left on the key line it wraps to
+   the line's hidden second row, never cut mid-word */
 .b-composer .keys .tip {
   flex: none;
   margin-left: auto;
+  padding-left: var(--s-3);
+  white-space: nowrap;
 }
 /* the mic control (bar I): its key at rest, the meter alone while on ('listening…' is the field's); fixed width, so the
    key line never moves when it changes */

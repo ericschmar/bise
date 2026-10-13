@@ -26,6 +26,14 @@ const SAID_WORD: f32 = 0.29;
 /// the test setting BISE_AMBIENT_FAKE_VOICE (bise_home::env::test_setting);
 /// `get` reads AMBIENT_HARNESS, BISE_HOME and HOME.
 pub fn words_file(file: Option<String>, get: &dyn Fn(&str) -> Option<String>) -> Result<Option<PathBuf>, String> {
+    words_file_in(file, get, &|p| std::fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf()))
+}
+
+/// [`words_file`] with its path resolver given: the file system's in a run,
+/// a table in a test, so the rule is tested on his paths wherever the test
+/// runs (a gate's temp dir is under ~/.bise/gate, which the rule allows:
+/// amb-feed m_22626).
+pub fn words_file_in(file: Option<String>, get: &dyn Fn(&str) -> Option<String>, canon: &dyn Fn(&Path) -> PathBuf) -> Result<Option<PathBuf>, String> {
     let val = |k: &str| get(k).filter(|v| !v.trim().is_empty());
     let file = match (file.filter(|f| !f.trim().is_empty()), val("AMBIENT_HARNESS")) {
         (Some(f), _) => PathBuf::from(f),
@@ -35,7 +43,6 @@ pub fn words_file(file: Option<String>, get: &dyn Fn(&str) -> Option<String>) ->
     let Some(bise_home) = val("BISE_HOME") else {
         return Err("fake voice refused: BISE_HOME is not set (harness A only, never his own ~/.bise)".into());
     };
-    let canon = |p: &Path| std::fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf());
     let mine = canon(Path::new(&bise_home));
     // harness A's homes live under ~/.bise/gate (HOME is the isolated one
     // there, so HOME/.bise is BISE_HOME); elsewhere BISE_HOME must not be

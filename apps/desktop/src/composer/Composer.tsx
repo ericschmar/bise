@@ -229,10 +229,18 @@ export const Composer = memo(function Composer(
                 </span>
               ))}
           </span>
-          {keys === undefined && tipText !== undefined && (
+          {keys === undefined && field.chips === true ? (
+            // the attachment list's one key (designer's composer-attachments A)
             <span className="tip" data-testid={`${testId}.tip`}>
-              tip: {tipText}
+              backspace on a chip removes it
             </span>
+          ) : (
+            keys === undefined &&
+            tipText !== undefined && (
+              <span className="tip" data-testid={`${testId}.tip`}>
+                tip: {tipText}
+              </span>
+            )
           )}
         </>
       }

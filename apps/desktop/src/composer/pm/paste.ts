@@ -13,7 +13,7 @@ import type { EditorView } from "@tiptap/pm/view";
 import type { Slice } from "@tiptap/pm/model";
 import { chipLabel, isLongPaste, nextChipNumber, type Chip } from "../message";
 import { type ComposerSources } from "../sources";
-import { fileIconOf, filePathOf, isImageFile, thumbnail } from "../attach";
+import { fileIconOf, filePathOf, imageDims, isImageFile, thumbnail } from "../attach";
 import { insertChip, insertText, nodeType, segmentsOf } from "./pmtext";
 
 /** What paste and drop need of the field: read at each use (the editor and props live in refs). */
@@ -46,9 +46,10 @@ const imageChip = async (
   c: PasteCtx,
   f: File,
 ): Promise<((n: number) => Chip) | null> => {
-  const [img, thumb] = await Promise.all([
+  const [img, thumb, dims] = await Promise.all([
     c.sources().saveImage(f),
     thumbnail(f),
+    imageDims(f),
   ]);
   if (img === null) return null;
   return (n) => ({
@@ -57,6 +58,8 @@ const imageChip = async (
     path: img.path,
     name: img.name,
     ...(thumb === null ? {} : { thumb }),
+    ...(dims === null ? {} : dims),
+    bytes: f.size,
   });
 };
 

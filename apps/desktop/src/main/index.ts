@@ -16,6 +16,7 @@ import { pathToFileURL } from 'node:url';
 import { app, BrowserWindow, ipcMain, Menu, nativeTheme, session } from 'electron';
 import { BADGE_LINE, CORE_IPC, IPC, TEST_ENV, TEST_USER_DATA_ENV } from '../shared/api';
 import { Capsule, installCapsuleIpc } from './capsule';
+import { capsuleFramesDir } from './capsuleframe';
 import { badgeOf, CountKeeper, titleOf } from './counts';
 import { installGuard } from './guard';
 import { startHelper } from './helper/run';
@@ -192,7 +193,8 @@ void app.whenReady().then(() => {
   );
   // its frame kept in userData (windows.ts FRAMES_FILE): a test's or a stand-in's, never his under a test
   const main = new MainWindow(testMode, offscreen, app.getPath('userData'));
-  const capsule = new Capsule(testMode, offscreen);
+  // off-screen: where the capsule would sit, in userData/capsule-frames.jsonl (capsuleframe.ts)
+  const capsule = new Capsule(testMode, offscreen, capsuleFramesDir(offscreen, testMode, app.getPath('userData')));
   installCapsuleIpc(capsule);
   ipcMain.on(IPC.quit, () => {
     app.quit();
